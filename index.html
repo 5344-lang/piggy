@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Piggy Yellow 0.7.2 - Strategic Edition</title>
+    <title>Piggy Yellow 0.7.3 - Strategic Edition</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐷</text></svg>">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
@@ -836,11 +836,14 @@ window.forceSubmitClue = () => {
                 }
             } else if (room.status === 'REVEAL') {
                 const sortedRounds = Object.entries(room.rounds || {}).sort(([a],[b]) => Number(a)-Number(b));
-                const playerIds = Object.keys(room.players).sort((a, b) => {
-                    if (a === room.host) return -1;
-                    if (b === room.host) return 1;
-                    return (room.players[a].name || "").localeCompare(room.players[b].name || "", "ko");
-                });
+                const playerIds = (() => {
+                    const allIds = Object.keys(room.players);
+                    const round1Giver = room.rounds?.[1]?.clueGiver;
+                    if (!round1Giver) return allIds;
+                    const idx = allIds.indexOf(round1Giver);
+                    if (idx <= 0) return allIds;
+                    return [...allIds.slice(idx), ...allIds.slice(0, idx)];
+                })();
                 const successCount = sortedRounds.filter(([,rd]) =>
                     Object.values(rd.submissions||{}).every(v => v===rd.answer||v==='piggy')
                 ).length;
