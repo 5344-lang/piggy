@@ -812,9 +812,14 @@ window.forceSubmitClue = () => {
                 const roundsHtml = sortedRounds.map(([r, rd]) => {
                     const answerColor = gameColors.find(c=>c.id===rd.answer)||{hex:'#888',fontColor:'white',name:'?'};
                     const isSuccess = Object.values(rd.submissions||{}).every(v=>v===rd.answer||v==='piggy');
-                    const playersHtml = playerIds.map(uid => {
+                    // 출제자 먼저, 나머지는 원래 순서
+                    const orderedIds = [rd.clueGiver, ...playerIds.filter(id => id !== rd.clueGiver)];
+                    const playersHtml = orderedIds.map(uid => {
+                        if (!room.players[uid]) return '';
                         const name = room.players[uid].name;
-                        if (rd.clueGiver===uid) return `<span class="text-[10px] bg-gray-200 px-2 py-0.5 border border-gray-400">${name}: 출제</span>`;
+                        if (rd.clueGiver===uid) {
+                            return `<span class="text-[10px] border-2 border-black px-2 py-0.5 font-bold" style="background:${answerColor.hex};color:${answerColor.fontColor}">${name} 🎤</span>`;
+                        }
                         const sub = rd.submissions?.[uid];
                         if (!sub) return `<span class="text-[10px] bg-gray-100 px-2 py-0.5 border border-gray-300">${name}: -</span>`;
                         const ok = sub===rd.answer||sub==='piggy';
