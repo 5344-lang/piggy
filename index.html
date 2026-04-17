@@ -595,7 +595,7 @@ window.forceSubmitClue = () => {
                     <div class="w-full max-w-md pixel-border bg-white text-black p-6">
                         <div class="flex justify-between items-center mb-6"><h2 class="pixel-font text-xs">로비</h2><div class="bg-yellow-400 p-2 border-2 border-black font-mono font-bold tracking-widest text-lg">${state.roomCode}</div></div>
                         <div class="space-y-4 mb-6">${players.map(p => `<div class="border-b-2 border-black pb-2 text-lg">🐷 ${p.name} ${p.isHost ? '[H]' : ''}</div>`).join('')}</div>
-                        ${room.host === state.user.uid ? `<button onclick="window.startGame()" class="pixel-btn bg-green-500 w-full text-white mb-3" ${players.length < 2 ? 'disabled' : ''}>게임 시작 (설정으로)</button>` : `<p class="animate-pulse text-center mb-3">방장이 설정을 시작하길 기다리는 중...</p>`}
+                        ${room.host === state.user.uid ? `<button onclick="window.startGame()" class="pixel-btn bg-green-500 w-full text-white mb-3" ${players.length < 2 ? 'disabled' : ''}>게임 시작 (설정으로)</button>` : `<p class="animate-pulse text-center mb-3">방장이 시작하길 기다리는 중...</p>`}
                         <button onclick="window.leaveRoom()" class="pixel-btn bg-gray-200 text-black w-full text-sm">← 홈으로 돌아가기</button>
                     </div>
                 `;
