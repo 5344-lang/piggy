@@ -95,15 +95,17 @@
         import { getDatabase, ref, set, onValue, update } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
 
         // --- Firebase Configuration ---
-const firebaseConfig = {
-  apiKey: "AIzaSyDroroAeupG2Xik7P42mJ8HPHvGi7JOp0w",
-  authDomain: "piggy-yellow-game.firebaseapp.com",
-  projectId: "piggy-yellow-game",
-  storageBucket: "piggy-yellow-game.firebasestorage.app",
-  messagingSenderId: "903172799700",
-  appId: "1:903172799700:web:f235053288e6f1db710f41",
-  measurementId: "G-5HGPSR9M26"
-};
+        const firebaseConfig = {
+            apiKey: "AIzaSyDroroAeupG2Xik7P42mJ8HPHvGi7JOp0w",
+            authDomain: "piggy-yellow-game.firebaseapp.com",
+            projectId: "piggy-yellow-game",
+            storageBucket: "piggy-yellow-game.firebasestorage.app",
+            messagingSenderId: "903172799700",
+            appId: "1:903172799700:web:f235053288e6f1db710f41",
+            measurementId: "G-5HGPSR9M26",
+            // 아시아 서버 주소 추가됨
+            databaseURL: "https://piggy-yellow-game-default-rtdb.asia-southeast1.firebasedatabase.app"
+        };
 
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
@@ -131,6 +133,7 @@ const firebaseConfig = {
                     break;
                 case 'success':
                     osc.type = 'triangle';
+                    // 주파수 배열 복구됨
                    .forEach((f, i) => {
                         osc.frequency.setValueAtTime(f, now + i * 0.1);
                     });
@@ -234,13 +237,12 @@ const firebaseConfig = {
                 const data = snapshot.val();
                 if (!data) return;
 
-                // Host handles round advancement logic (Prevention of Race Condition)
                 if (data.status === 'PLAYING' && data.host === state.user?.uid && !advancePending) {
                     const playerIds = Object.keys(data.players || {});
                     const roundData = data.rounds?.[data.currentRound];
                     const subCount = Object.keys(roundData?.submissions || {}).length;
                     
-                    if (roundData?.clue && subCount === playerIds.length - 1) { // ClueGiver 제외 전원 제출
+                    if (roundData?.clue && subCount === playerIds.length - 1) {
                         advancePending = true;
                         if (data.currentRound < 6) {
                             setTimeout(() => {
@@ -471,7 +473,6 @@ const firebaseConfig = {
             }
         };
 
-        // 전역 함수 노출
         window.createRoom = createRoom;
         window.joinRoom = joinRoom;
         window.startGame = startGame;
@@ -479,7 +480,6 @@ const firebaseConfig = {
         window.submitCard = submitCard;
         window.resetGame = resetGame;
 
-        // --- 초기화 ---
         signInAnonymously(auth);
         onAuthStateChanged(auth, (u) => {
             if (u) {
