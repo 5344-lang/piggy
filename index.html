@@ -334,11 +334,11 @@ const ALL_COLORS = [
                 }
 
                 if (state.roomData?.currentRound !== undefined && state.roomData.currentRound !== data.currentRound) {
-                    updateState({ selectedTopic: '' });
+                    updateState({ selectedTopic: '' }); window.selCol = null;
                 }
 
                 if (data.status === 'SELECTING_CARDS' && state.roomData?.status === 'REVEAL') {
-                    updateState({ tempSelectedCards: [], showTopicModal: false, clueWarning: { show: false }, selectedTopic: '' });
+                    updateState({ tempSelectedCards: [], showTopicModal: false, clueWarning: { show: false }, selectedTopic: '' }); window.selCol = null;
                 }
 
                 updateState({ roomData: data });
