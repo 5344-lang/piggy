@@ -724,8 +724,8 @@ window.forceSubmitClue = () => {
                                         ).join('')}
                                     </div>
                                 ` : `
-                                    <p class="text-[10px] font-bold mb-1">선택한 주제</p>
-                                    <div class="bg-black border-2 border-black text-white text-center font-bold py-2 mb-4">${state.selectedTopic}</div>
+                                    <p class="text-[10px] font-bold mb-1">선택한 주제 <span class="text-gray-400 font-normal">(탭하면 변경)</span></p>
+                                    <div onclick="window.updateState({selectedTopic:''}); window.playSound('click');" class="bg-black border-2 border-black text-white text-center font-bold py-2 mb-4 cursor-pointer active:opacity-70">${state.selectedTopic}</div>
                                     <input id="clueWord" placeholder="제시어 입력" class="pixel-input mb-4 text-base text-center">
                                     <div class="grid grid-cols-4 gap-2 mb-6">
                                         ${hand.map(cid => {
