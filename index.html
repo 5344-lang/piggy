@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Piggy Yellow 0.4.4- Strategic Edition</title>
+    <title>Piggy Yellow 0.4.5- Strategic Edition</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     <style>
@@ -476,35 +476,33 @@ window.forceSubmitClue = () => {
                 container.innerHTML = `<div class="text-center"><h1 class="pixel-font text-3xl mb-8 animate-bounce">GAME OVER</h1><button onclick="location.reload()" class="pixel-btn bg-yellow-400 text-black px-10">다시 하기</button></div>`;
             }
         };
-// 금지어 경고 모달
-if (state.clueWarning && state.clueWarning.show) {
-    const warnModal = document.createElement('div');
-    warnModal.className = 'modal-overlay';
-    warnModal.innerHTML = `
-        <div class="pixel-border bg-white text-black p-6 w-full max-w-xs text-center">
-            <h2 class="pixel-font text-red-600 text-[10px] mb-4">⚠️ 금지어 알림</h2>
-            
-            <div class="text-left space-y-3 mb-6">
-                <div>
-                    <p class="text-[10px] text-gray-500 mb-1">입력한 단어</p>
-                    <p class="border-b-2 border-black pb-1 font-bold text-lg">${state.clueWarning.word}</p>
-                </div>
-                <div>
-                    <p class="text-[10px] text-gray-500 mb-1">감지된 금지어</p>
-                    <p class="text-red-500 font-bold">${state.clueWarning.found.join(', ')}</p>
-                </div>
-            </div>
-
-            <div class="flex flex-col gap-3">
-                <button onclick="window.updateState({clueWarning: {show: false}})" 
-                        class="pixel-btn bg-black text-white py-2 text-xs uppercase">고친다 (다시 쓰기)</button>
-                <button onclick="window.forceSubmitClue()" 
-                        class="pixel-btn bg-red-500 text-white py-2 text-xs uppercase">출제한다 (강행)</button>
-            </div>
-        </div>
-    `;
-    container.appendChild(warnModal);
-}
+// --- 금지어 경고 모달 로직을 render 함수 안으로 이동 ---
+            if (state.clueWarning && state.clueWarning.show) {
+                const warnModal = document.createElement('div');
+                warnModal.className = 'modal-overlay';
+                warnModal.innerHTML = `
+                    <div class="pixel-border bg-white text-black p-6 w-full max-w-xs text-center">
+                        <h2 class="pixel-font text-red-600 text-[10px] mb-4">⚠️ 금지어 알림</h2>
+                        <div class="text-left space-y-3 mb-6">
+                            <div>
+                                <p class="text-[10px] text-gray-500 mb-1">입력한 단어</p>
+                                <p class="border-b-2 border-black pb-1 font-bold text-lg">\${state.clueWarning.word}</p>
+                            </div>
+                            <div>
+                                <p class="text-[10px] text-gray-500 mb-1">감지된 금지어</p>
+                                <p class="text-red-500 font-bold">\${state.clueWarning.found.join(', ')}</p>
+                            </div>
+                        </div>
+                        <div class="flex flex-col gap-3">
+                            <button onclick="window.updateState({clueWarning: {show: false}})" 
+                                    class="pixel-btn bg-black text-white py-2 text-xs uppercase">고친다 (다시 쓰기)</button>
+                            <button onclick="window.forceSubmitClue()" 
+                                    class="pixel-btn bg-red-500 text-white py-2 text-xs uppercase">출제한다 (강행)</button>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(warnModal);
+            }
         window.toggleCard = (cid) => {
             playSound('click');
             let cards = [...state.tempSelectedCards];
