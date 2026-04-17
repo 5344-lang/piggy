@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Piggy Yellow 0.2 - 8-Bit Coop Game</title>
+    <title>Piggy Yellow 0.2.1 - 8-Bit Coop Game</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     <style>
@@ -480,13 +480,24 @@
         window.submitCard = submitCard;
         window.resetGame = resetGame;
 
-        signInAnonymously(auth);
-        onAuthStateChanged(auth, (u) => {
-            if (u) {
-                state.user = u;
-                render();
-            }
-        });
+// 로그인 시도 후 에러가 나면 화면에 빨간 글씨로 띄워줍니다.
+signInAnonymously(auth).catch((error) => {
+    const container = document.getElementById('app');
+    container.innerHTML = `
+        <div class="pixel-font text-[10px] text-red-500 text-center uppercase leading-loose">
+            AUTH ERROR!<br>${error.message}<br>
+            <span class="text-white text-[8px]">Firebase 콘솔에서 Authentication > 익명 로그인을 켜주세요.</span>
+        </div>
+    `;
+    console.error("Auth Error:", error);
+});
+
+onAuthStateChanged(auth, (u) => {
+    if (u) {
+        state.user = u;
+        render();
+    }
+});
     </script>
 </body>
 </html>
