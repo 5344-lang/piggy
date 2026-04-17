@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Piggy Yellow 0.7.0 - Strategic Edition</title>
+    <title>Piggy Yellow 0.7.1 - Strategic Edition</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐷</text></svg>">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
@@ -419,10 +419,13 @@ const ALL_COLORS = [
             await update(ref(db, `artifacts/${appId}/rooms/${state.roomCode}/topicConfirmed`), { [state.user.uid]: true });
         };
 
-        // --- 게임 시작 (방장, 전원 확인 후) ---
+        let startGamePending = false;
         window.startRealGame = async () => {
+            if (startGamePending || state.roomData?.status === 'PLAYING') return;
+            startGamePending = true;
             playSound('click');
             await update(ref(db, `artifacts/${appId}/rooms/${state.roomCode}`), { status: 'PLAYING' });
+            startGamePending = false;
         };
 
 const submitClue = async (word, colorId, category) => {
@@ -664,12 +667,12 @@ window.forceSubmitClue = () => {
                 const playerIds = Object.keys(room.players || {});
                 const confirmed = room.topicConfirmed || {};
                 const isHost = room.host === state.user.uid;
-                const myConfirmed = isHost || !!confirmed[state.user.uid];
-                const allConfirmed = playerIds.length > 0 && playerIds.every(id => id === room.host || !!confirmed[id]);
+                const myConfirmed = !!confirmed[state.user.uid];
+                const allConfirmed = playerIds.length > 0 && playerIds.every(id => !!confirmed[id]);
 
-                // 방장은 자동 확인 처리
-                if (isHost && !confirmed[state.user.uid]) {
-                    update(ref(db, `artifacts/${appId}/rooms/${state.roomCode}/topicConfirmed`), { [state.user.uid]: true });
+                // 전원 준비완료 시 방장이 자동으로 게임 시작
+                if (isHost && allConfirmed) {
+                    window.startRealGame();
                 }
 
                 container.innerHTML = `
@@ -680,30 +683,24 @@ window.forceSubmitClue = () => {
                                 const arr = Array.isArray(cats) ? cats : [cats];
                                 return `<div class="border-l-4 border-black pl-3 py-1 text-left">
                                     <p class="text-[10px] font-bold mb-1">ROUND ${r}</p>
-                                    <div class="flex gap-1 flex-wrap">${arr.map(c => `<span class="bg-gray-100 border border-gray-400 px-2 py-0.5 text-[11px]">${c}</span>`).join('')}</div>
+                                    <div class="flex gap-1 flex-wrap">${arr.map(c => `<span class="bg-gray-100 border border-gray-400 px-2 py-0.5 text-[11px]">${c}</span>`).join("")}</div>
                                 </div>`;
-                            }).join('')}
+                            }).join("")}
                         </div>
                         <div class="border-t-2 border-gray-200 pt-4 mb-4">
                             <div class="flex flex-wrap gap-2 justify-center">
                                 ${playerIds.map(id => {
                                     const name = room.players[id].name;
-                                    const done = id === room.host || !!confirmed[id];
+                                    const done = !!confirmed[id];
                                     return `<span class="px-2 py-1 border-2 text-[11px] font-bold ${done ? 'border-green-500 bg-green-50 text-green-700' : 'border-gray-300 text-gray-400'}">
                                         ${done ? '✓' : '…'} ${name}
                                     </span>`;
-                                }).join('')}
+                                }).join("")}
                             </div>
                         </div>
                         ${!myConfirmed
-                            ? `<button onclick="window.confirmTopic()" class="pixel-btn bg-black text-white w-full mb-2">확인 완료</button>`
-                            : (!isHost ? `<div class="mb-2"></div>` : '')
-                        }
-                        ${isHost
-                            ? `<button onclick="window.startRealGame()" class="pixel-btn w-full text-white ${allConfirmed ? 'bg-green-500' : 'bg-gray-400'}" ${allConfirmed ? '' : 'disabled'}>
-                                ${allConfirmed ? '🎮 게임 시작!' : '전원 확인 대기 중...'}
-                               </button>`
-                            : `<p class="text-center animate-pulse text-xs text-gray-600">${allConfirmed ? '방장이 게임을 시작할 예정입니다...' : '모두 확인하면 방장이 게임을 시작합니다'}</p>`
+                            ? `<button onclick="window.confirmTopic()" class="pixel-btn bg-green-500 text-white w-full">✅ 준비완료</button>`
+                            : `<p class="text-center animate-pulse text-sm text-gray-600 py-2">준비완료! 다른 플레이어를 기다리는 중...</p>`
                         }
                     </div>
                 `;
