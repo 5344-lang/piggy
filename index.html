@@ -3,22 +3,37 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Piggy Yellow 0.3.2 - 8-Bit Coop Game</title>
+    <title>Piggy Yellow 0.3.3 - 8-Bit Coop Game</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
-    <style>
+   <style>
+        /* 네오둥근모 웹폰트 불러오기 */
+        @font-face {
+            font-family: 'NeoDunggeunmo';
+            src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/noonfonts_2001@1.3/NeoDunggeunmo.woff') format('woff');
+            font-weight: normal;
+            font-style: normal;
+        }
+
         body {
             background-color: #1a1a1a;
             color: white;
-            font-family: 'monospace';
+            /* 기본 폰트를 네오둥근모(고딕 픽셀체)로 변경 */
+            font-family: 'NeoDunggeunmo', 'Malgun Gothic', sans-serif;
             user-select: none;
             -webkit-tap-highlight-color: transparent;
         }
-        .pixel-font { font-family: 'Press Start 2P', cursive; }
+        
+        /* 픽셀 폰트 클래스: 영어는 기존 폰트, 한글은 네오둥근모 적용 */
+        .pixel-font { 
+            font-family: 'Press Start 2P', 'NeoDunggeunmo', sans-serif; 
+        }
+        
         .pixel-border {
             border: 4px solid black;
             box-shadow: 4px 4px 0px 0px rgba(0,0,0,1);
         }
+        
         .pixel-btn {
             position: relative;
             padding: 1rem;
@@ -28,16 +43,19 @@
             transition: all 0.1s;
             text-transform: uppercase;
         }
+        
         .pixel-btn:active:not(:disabled) {
             transform: translate(4px, 4px);
             box-shadow: 0px 0px 0px 0px rgba(0,0,0,1);
         }
+        
         .pixel-btn:disabled {
             background-color: #4b5563;
             box-shadow: none;
             transform: translate(4px, 4px);
             cursor: not-allowed;
         }
+        
         .pixel-input {
             width: 100%;
             padding: 1rem;
@@ -47,6 +65,7 @@
             color: black;
             outline: none;
         }
+        
         .pixel-card {
             width: 80px;
             height: 110px;
@@ -60,16 +79,19 @@
             cursor: pointer;
             transition: all 0.1s;
         }
+        
         .pixel-card:active:not(.disabled) {
             transform: translate(4px, 4px);
             box-shadow: 0px 0px 0px 0px rgba(0,0,0,1);
         }
+        
         .pixel-card.selected {
             border-color: #facc15;
             transform: scale(1.05);
             box-shadow: 0px 0px 10px 2px #facc15;
             z-index: 10;
         }
+        
         .pixel-card.disabled {
             opacity: 0.3;
             filter: grayscale(1);
@@ -77,6 +99,7 @@
             transform: none;
             box-shadow: none;
         }
+        
         @keyframes pixel-bounce {
             0%, 100% { transform: translateY(0); }
             50% { transform: translateY(-10px); }
@@ -189,9 +212,11 @@
             playerName: '',
             error: ''
         };
+        window.state = state; // HTML에서 접근할 수 있도록 밖으로 꺼내줌
 
         const updateState = (newState) => {
             state = { ...state, ...newState };
+            window.state = state; // 상태가 변할 때 밖의 상태도 같이 업데이트
             render();
         };
 
