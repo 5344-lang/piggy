@@ -337,7 +337,8 @@ const ALL_COLORS = [
                 status: 'TOPIC_REVEAL',
                 selectedCards: state.tempSelectedCards,
                 topicFlow: topicFlow,
-                currentRound: 1
+                currentRound: 1,
+                draftCards: null
             });
         };
 
@@ -450,7 +451,16 @@ window.forceSubmitClue = () => {
                         </div>
                     `;
                 } else {
-                    container.innerHTML = `<div class="text-center animate-pulse"><p>방장이 카드를 고르고 있습니다...</p></div>`;
+                    const draft = room.draftCards ? (Array.isArray(room.draftCards) ? room.draftCards : Object.values(room.draftCards)) : [];
+                    container.innerHTML = `
+                        <div class="w-full max-w-md pixel-border bg-white text-black p-4">
+                            <h2 class="pixel-font text-[10px] text-center mb-1 text-gray-500">방장이 카드를 고르는 중...</h2>
+                            <p class="text-center text-[10px] mb-4 animate-pulse text-yellow-600">${draft.length}/6 선택됨</p>
+                            <div class="grid grid-cols-4 gap-2 mb-4">
+                                ${gameColors.map(c => `<div class="aspect-square border-2 border-black flex items-center justify-center text-[8px] text-center ${draft.includes(c.id) ? 'ring-4 ring-yellow-400 scale-105' : 'opacity-60'}" style="background-color: ${c.hex}; color: ${c.fontColor}">${c.name}</div>`).join('')}
+                            </div>
+                        </div>
+                    `;
                 }
             }
             else if (room.status === 'TOPIC_REVEAL') {
@@ -626,6 +636,7 @@ window.forceSubmitClue = () => {
             if (cards.includes(cid)) cards = cards.filter(c => c !== cid);
             else if (cards.length < 6) cards.push(cid);
             updateState({ tempSelectedCards: cards });
+            update(ref(db, `artifacts/${appId}/rooms/${state.roomCode}`), { draftCards: cards });
         };
         window.createRoom = createRoom; window.joinRoom = joinRoom; window.startGame = startGame;
         window.confirmSetup = confirmSetup; window.submitClue = submitClue; window.submitCard = submitCard;
