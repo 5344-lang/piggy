@@ -3,11 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Piggy Yellow 0.7.3 - Strategic Edition</title>
+    <title>Piggy Yellow 0.7.4 - Strategic Edition</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐷</text></svg>">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     <style>
+        @media (min-width: 768px) { html { zoom: 1.5; } }
+        @media (min-width: 1024px) { html { zoom: 2.0; } }
         @font-face {
             font-family: 'NeoDunggeunmo';
             src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/noonfonts_2001@1.3/NeoDunggeunmo.woff') format('woff');
@@ -301,7 +303,7 @@ const ALL_COLORS = [
                 }
                 if (data.status === 'PLAYING' && data.host === state.user?.uid && Object.keys(data.players || {}).length <= 1 && !advancePending) {
                     advancePending = true;
-                    update(ref(db, `artifacts/${appId}/rooms/${code}`), { status: 'REVEAL' });
+                    update(ref(db, `artifacts/${appId}/rooms/${code}`), { status: 'REVEAL', earlyEnd: true });
                 }
                 // 출제자가 나가고 아직 제시어 없으면 라운드 스킵
                 if (data.status === 'PLAYING' && data.host === state.user?.uid && !advancePending) {
@@ -328,7 +330,7 @@ const ALL_COLORS = [
                                 playSound('success');
                                 update(ref(db, `artifacts/${appId}/rooms/${code}`), { currentRound: roundNum + 1 });
                             } else {
-                                update(ref(db, `artifacts/${appId}/rooms/${code}`), { status: 'REVEAL' });
+                                update(ref(db, `artifacts/${appId}/rooms/${code}`), { status: 'REVEAL', earlyEnd: true });
                             }
                         }, 1500);
                     }
@@ -426,7 +428,17 @@ const ALL_COLORS = [
         // --- 주제 확인 완료 (모든 플레이어) ---
         window.confirmTopic = async () => {
             playSound('click');
-            await update(ref(db, `artifacts/${appId}/rooms/${state.roomCode}/topicConfirmed`), { [state.user.uid]: true });
+            const uid = state.user.uid;
+            await update(ref(db, `artifacts/${appId}/rooms/${state.roomCode}/topicConfirmed`), { [uid]: true });
+            if (!startGamePending && state.roomData?.status !== 'PLAYING') {
+                const pIds = Object.keys(state.roomData?.players || {});
+                const conf = { ...(state.roomData?.topicConfirmed || {}), [uid]: true };
+                if (pIds.length > 0 && pIds.every(id => !!conf[id])) {
+                    startGamePending = true;
+                    await update(ref(db, `artifacts/${appId}/rooms/${state.roomCode}`), { status: 'PLAYING' });
+                    startGamePending = false;
+                }
+            }
         };
 
         let startGamePending = false;
@@ -705,7 +717,7 @@ window.forceSubmitClue = () => {
                             </div>
                         </div>
                         ${!myConfirmed
-                            ? `<button onclick="window.confirmTopic()" class="pixel-btn bg-green-500 text-white w-full">✅ 준비완료</button>`
+                            ? `<button onclick="window.confirmTopic()" class="pixel-btn bg-green-500 text-white w-full">준비완료</button>`
                             : `<p class="text-center animate-pulse text-sm text-gray-600 py-2">준비완료! 다른 플레이어를 기다리는 중...</p>`
                         }
                     </div>
@@ -884,7 +896,7 @@ window.forceSubmitClue = () => {
                         <h1 class="pixel-font text-xl text-center mb-1 animate-bounce" style="color:${successCount===sortedRounds.length&&sortedRounds.length>0?'#4ade80':'#facc15'};-webkit-text-stroke:1.5px #000;text-shadow:2px 2px 0 #000,-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000;">${successCount===sortedRounds.length&&sortedRounds.length>0?'SUCCESS!':'GAME OVER'}</h1>
                         <p class="text-center text-lg font-bold mb-4 text-gray-900">${successCount} / ${sortedRounds.length} 라운드 성공</p>
                         <div class="space-y-3 mb-6 max-h-[60vh] overflow-y-auto">${roundsHtml}</div>
-                        ${room.host === state.user.uid
+                        ${room.earlyEnd ? '' : room.host === state.user.uid
                             ? `<button onclick="window.newGame()" class="pixel-btn bg-green-500 text-white w-full mb-3">같은 멤버로 새 게임</button>`
                             : `<p class="text-center animate-pulse text-sm mb-3 text-gray-700">방장이 새 게임을 시작하길 기다리는 중...</p>`
                         }
@@ -928,7 +940,7 @@ window.forceSubmitClue = () => {
                     fbUpdates.host = remaining[0];
                     fbUpdates[`players/${remaining[0]}/isHost`] = true;
                 }
-                if (remaining.length <= 1) fbUpdates.status = 'REVEAL';
+                if (remaining.length <= 1) { fbUpdates.status = 'REVEAL'; fbUpdates.earlyEnd = true; }
                 update(ref(db, `artifacts/${appId}/rooms/${roomCode}`), fbUpdates);
             } else if (roomCode && uid && room && room.status === 'LOBBY') {
                 update(ref(db, `artifacts/${appId}/rooms/${roomCode}/players`), { [uid]: null });
@@ -941,7 +953,7 @@ window.forceSubmitClue = () => {
             if (isHost) {
                 if (!confirm('게임을 종료하고 홈으로 가시겠습니까?')) return;
                 const code = state.roomCode;
-                await update(ref(db, `artifacts/${appId}/rooms/${code}`), { status: 'REVEAL' });
+                await update(ref(db, `artifacts/${appId}/rooms/${code}`), { status: 'REVEAL', earlyEnd: true });
                 clearSession(); stopBGM();
                 updateState({ roomCode: '', roomData: null, tempSelectedCards: [], selectedTopic: '', showTopicModal: false, clueWarning: { show: false } });
             } else {
