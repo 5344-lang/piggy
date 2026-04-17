@@ -134,7 +134,7 @@
                 case 'success':
                     osc.type = 'triangle';
                     // 주파수 배열 복구됨
-                   .forEach((f, i) => {
+                   [440, 554, 659, 880].forEach((f, i) => {
                         osc.frequency.setValueAtTime(f, now + i * 0.1);
                     });
                     gain.gain.setValueAtTime(0.1, now);
