@@ -410,7 +410,15 @@ window.forceSubmitClue = () => {
                 const playersIds = Object.keys(room.players);
                 const isClueGiver = playersIds[(roundNum - 1) % playersIds.length] === state.user.uid;
                 const hasSub = (roundData.submissions && roundData.submissions[state.user.uid]) || (isClueGiver && roundData.answer);
-                const hand = [...room.selectedCards, 'piggy'];
+                const usedCards = new Set(
+                    Object.entries(room.rounds || {})
+                        .filter(([r]) => parseInt(r) !== roundNum)
+                        .flatMap(([, rd]) => [
+                            rd.submissions?.[state.user.uid],
+                            rd.clueGiver === state.user.uid ? rd.answer : null
+                        ].filter(Boolean))
+                );
+                const hand = [...room.selectedCards, 'piggy'].filter(cid => !usedCards.has(cid));
 
                 container.innerHTML = `
                     <div class="w-full max-w-md flex flex-col gap-4">
