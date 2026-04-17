@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Piggy Yellow 0.4.1- Strategic Edition</title>
+    <title>Piggy Yellow 0.4.2- Strategic Edition</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     <style>
@@ -462,10 +462,31 @@ if (state.showTopicModal && room.topicFlow) {
     `;
     container.appendChild(modal);
 }
-            } else if (room.status === 'REVEAL') {
+           } else if (room.status === 'REVEAL') {
                 container.innerHTML = `<div class="text-center"><h1 class="pixel-font text-3xl mb-8 animate-bounce">GAME OVER</h1><button onclick="location.reload()" class="pixel-btn bg-yellow-400 text-black px-10">다시 하기</button></div>`;
             }
-        };
+
+            // 주제 흐름 모달 로직
+            if (state.showTopicModal && room.topicFlow) {
+                const modal = document.createElement('div'); 
+                modal.className = 'modal-overlay';
+                modal.innerHTML = `
+                    <div class="pixel-border bg-white text-black p-6 w-full max-w-xs relative">
+                        <h2 class="pixel-font text-xs mb-4 text-center border-b-2 border-black pb-2">📋 주제 흐름</h2>
+                        <div class="space-y-3 max-h-80 overflow-y-auto">
+                            ${Object.entries(room.topicFlow).map(([r, cats]) => `
+                                <div class="${r == roundNum ? 'bg-yellow-100 ring-2 ring-yellow-400 p-1' : 'opacity-50'}">
+                                    <p class="text-[10px] font-bold">ROUND ${r}</p>
+                                    <p class="text-[11px]">${cats.join(', ')}</p>
+                                </div>
+                            `).join('')}
+                        </div>
+                        <button onclick="window.updateState({showTopicModal: false}); window.playSound('click');" class="pixel-btn bg-black text-white w-full mt-6 py-2 text-xs">닫기</button>
+                    </div>
+                `;
+                container.appendChild(modal);
+            }
+        }; // <--- 여기서 render 함수가 정확히 닫힙니다.
 
         window.toggleCard = (cid) => {
             playSound('click');
@@ -474,15 +495,19 @@ if (state.showTopicModal && room.topicFlow) {
             else if (cards.length < 6) cards.push(cid);
             updateState({ tempSelectedCards: cards });
         };
-        window.createRoom = createRoom; window.joinRoom = joinRoom; window.startGame = startGame;
-        window.confirmSetup = confirmSetup; window.submitClue = submitClue; window.submitCard = submitCard;
-        window.updateState = updateState; window.playSound = playSound;
 
-        signInAnonymously(auth); onAuthStateChanged(auth, u => { if(u) { state.user = u; render(); } });
-        window.startRealGame = async () => {
-    playSound('click');
-    await update(ref(db, `artifacts/${appId}/rooms/${state.roomCode}`), { status: 'PLAYING' });
-};
+        // 전역 함수 연결
+        window.createRoom = createRoom; 
+        window.joinRoom = joinRoom; 
+        window.startGame = startGame;
+        window.confirmSetup = confirmSetup; 
+        window.submitClue = submitClue; 
+        window.submitCard = submitCard;
+        window.updateState = updateState; 
+        window.playSound = playSound;
+
+        signInAnonymously(auth); 
+        onAuthStateChanged(auth, u => { if(u) { state.user = u; render(); } });
     </script>
 </body>
 </html>
