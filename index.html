@@ -627,9 +627,14 @@ window.forceSubmitClue = () => {
             else if (room.status === 'TOPIC_REVEAL') {
                 const playerIds = Object.keys(room.players || {});
                 const confirmed = room.topicConfirmed || {};
-                const confirmedIds = Object.keys(confirmed);
-                const myConfirmed = !!confirmed[state.user.uid];
-                const allConfirmed = playerIds.length > 0 && playerIds.every(id => confirmed[id]);
+                const isHost = room.host === state.user.uid;
+                const myConfirmed = isHost || !!confirmed[state.user.uid];
+                const allConfirmed = playerIds.length > 0 && playerIds.every(id => id === room.host || !!confirmed[id]);
+
+                // 방장은 자동 확인 처리
+                if (isHost && !confirmed[state.user.uid]) {
+                    update(ref(db, `artifacts/${appId}/rooms/${state.roomCode}/topicConfirmed`), { [state.user.uid]: true });
+                }
 
                 container.innerHTML = `
                     <div class="w-full max-w-md pixel-border bg-white text-black p-6">
@@ -644,11 +649,10 @@ window.forceSubmitClue = () => {
                             }).join('')}
                         </div>
                         <div class="border-t-2 border-gray-200 pt-4 mb-4">
-                            <p class="text-[10px] text-gray-500 mb-2 text-center">확인 현황 (${confirmedIds.length}/${playerIds.length})</p>
                             <div class="flex flex-wrap gap-2 justify-center">
                                 ${playerIds.map(id => {
                                     const name = room.players[id].name;
-                                    const done = !!confirmed[id];
+                                    const done = id === room.host || !!confirmed[id];
                                     return `<span class="px-2 py-1 border-2 text-[11px] font-bold ${done ? 'border-green-500 bg-green-50 text-green-700' : 'border-gray-300 text-gray-400'}">
                                         ${done ? '✓' : '…'} ${name}
                                     </span>`;
@@ -657,11 +661,11 @@ window.forceSubmitClue = () => {
                         </div>
                         ${!myConfirmed
                             ? `<button onclick="window.confirmTopic()" class="pixel-btn bg-black text-white w-full mb-2">확인 완료</button>`
-                            : `<p class="text-center text-green-600 font-bold text-sm mb-2">✓ 확인했습니다</p>`
+                            : (!isHost ? `<div class="mb-2"></div>` : '')
                         }
-                        ${room.host === state.user.uid
+                        ${isHost
                             ? `<button onclick="window.startRealGame()" class="pixel-btn w-full text-white ${allConfirmed ? 'bg-green-500' : 'bg-gray-400'}" ${allConfirmed ? '' : 'disabled'}>
-                                ${allConfirmed ? '🎮 게임 시작!' : `전원 확인 대기 중... (${confirmedIds.length}/${playerIds.length})`}
+                                ${allConfirmed ? '🎮 게임 시작!' : '전원 확인 대기 중...'}
                                </button>`
                             : `<p class="text-center animate-pulse text-xs text-gray-600">${allConfirmed ? '방장이 게임을 시작할 예정입니다...' : '모두 확인하면 방장이 게임을 시작합니다'}</p>`
                         }
