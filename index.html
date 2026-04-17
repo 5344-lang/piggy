@@ -252,21 +252,12 @@ const ALL_COLORS = [
             await update(ref(db, `artifacts/${appId}/rooms/${state.roomCode}`), { status: 'SELECTING_CARDS' });
         };
 
-// --- 게임 설정 확정 및 주제 6세트 생성 ---
         const confirmSetup = async () => {
             if (state.tempSelectedCards.length !== 6) return alert("카드를 6장 골라주세요!");
             playSound('start');
-            
-            // 1. 전체 카테고리 풀에서 무작위로 셔플
             const shuffledCats = [...CATEGORY_POOL].sort(() => 0.5 - Math.random());
-            
-            // 2. 6개 라운드에 각각 3개씩 주제 세트를 배정
             const topicFlow = {};
-            for(let i = 1; i <= 6; i++) {
-                topicFlow[i] = shuffledCats.slice((i - 1) * 3, i * 3);
-            }
-
-            // 3. 바로 게임 시작이 아닌 '주제 공개(TOPIC_REVEAL)' 단계로 서버 업데이트
+            for(let i = 1; i <= 6; i++) topicFlow[i] = shuffledCats[i - 1];
             await update(ref(db, `artifacts/${appId}/rooms/${state.roomCode}`), {
                 status: 'TOPIC_REVEAL',
                 selectedCards: state.tempSelectedCards,
@@ -390,10 +381,10 @@ window.forceSubmitClue = () => {
                     <div class="w-full max-w-md pixel-border bg-white text-black p-6">
                         <h2 class="pixel-font text-xs mb-4 text-center border-b-2 border-black pb-2">📋 이번 판 주제 리스트 (6라운드)</h2>
                         <div class="space-y-3 mb-8 max-h-96 overflow-y-auto">
-                            ${Object.entries(room.topicFlow).map(([r, cats]) => `
+                            ${Object.entries(room.topicFlow).map(([r, cat]) => `
                                 <div class="border-l-4 border-yellow-400 pl-3 py-1 text-left">
                                     <p class="text-[10px] font-bold">ROUND ${r}</p>
-                                    <p class="text-[12px]">${cats.join(', ')}</p>
+                                    <p class="text-[12px]">${cat}</p>
                                 </div>
                             `).join('')}
                         </div>
@@ -432,10 +423,8 @@ window.forceSubmitClue = () => {
                         ${isClueGiver && !roundData.clue ? `
                             <div class="pixel-border bg-white text-black p-4 w-full">
                                 <h2 class="pixel-font text-xs mb-4 text-center text-red-600 font-bold">당신은 출제자입니다</h2>
-                                <p class="text-[10px] font-bold mb-2">1. 카테고리 선택</p>
-                                <div class="grid grid-cols-3 gap-2 mb-4">
-                                    ${room.topicFlow[roundNum].map(cat => `<div onclick="window.selCat='${cat}'; document.querySelectorAll('.cat').forEach(e=>e.classList.remove('active')); this.classList.add('active'); window.playSound('click');" class="cat category-box text-center">${cat}</div>`).join('')}
-                                </div>
+                                <p class="text-[10px] font-bold mb-1">카테고리</p>
+                                <div class="bg-yellow-400 border-2 border-black text-black text-center font-bold py-2 mb-4">${room.topicFlow[roundNum]}</div>
                                 <input id="clueWord" placeholder="제시어 입력" class="pixel-input mb-4 text-base text-center">
                                 <div class="grid grid-cols-4 gap-2 mb-6">
                                     ${hand.map(cid => { 
@@ -443,7 +432,7 @@ window.forceSubmitClue = () => {
                                         return `<div onclick="window.selCol='${cid}'; document.querySelectorAll('.col').forEach(e=>e.style.border='2px solid black'); this.style.border='4px solid #facc15'; window.playSound('click');" class="col aspect-square border-2 border-black cursor-pointer flex items-center justify-center text-[8px] text-center" style="background-color: ${c.hex}; color: ${c.fontColor}">${cid==='piggy'?'🐷':c.name}</div>` 
                                     }).join('')}
                                 </div>
-                                <button onclick="window.submitClue(document.getElementById('clueWord').value, window.selCol, window.selCat)" class="pixel-btn bg-red-500 w-full text-white">제시어 전송</button>
+                                <button onclick="window.submitClue(document.getElementById('clueWord').value, window.selCol, '${room.topicFlow[roundNum]}')" class="pixel-btn bg-red-500 w-full text-white">제시어 전송</button>
                             </div>
                         ` : `
                             <div class="pixel-border bg-yellow-400 text-black p-6 mb-4 text-center">
@@ -468,10 +457,10 @@ window.forceSubmitClue = () => {
                         <div class="pixel-border bg-white text-black p-6 w-full max-w-xs relative text-left">
                             <h2 class="pixel-font text-xs mb-4 text-center border-b-2 border-black pb-2">📋 주제 흐름</h2>
                             <div class="space-y-3 max-h-80 overflow-y-auto">
-                                ${Object.entries(room.topicFlow).map(([r, cats]) => `
+                                ${Object.entries(room.topicFlow).map(([r, cat]) => `
                                     <div class="${r == roundNum ? 'bg-yellow-100 ring-2 ring-yellow-400 p-1' : 'opacity-50'}">
                                         <p class="text-[10px] font-bold">ROUND ${r}</p>
-                                        <p class="text-[11px]">${cats.join(', ')}</p>
+                                        <p class="text-[11px]">${cat}</p>
                                     </div>
                                 `).join('')}
                             </div>
@@ -508,7 +497,46 @@ window.forceSubmitClue = () => {
                     container.appendChild(warnModal);
                 }
             } else if (room.status === 'REVEAL') {
-                container.innerHTML = `<div class="text-center"><h1 class="pixel-font text-3xl mb-8 animate-bounce">GAME OVER</h1><button onclick="location.reload()" class="pixel-btn bg-yellow-400 text-black px-10">다시 하기</button></div>`;
+                const sortedRounds = Object.entries(room.rounds || {}).sort(([a],[b]) => Number(a)-Number(b));
+                const playerIds = Object.keys(room.players);
+                const successCount = sortedRounds.filter(([,rd]) =>
+                    Object.values(rd.submissions||{}).every(v => v===rd.answer||v==='piggy')
+                ).length;
+
+                const roundsHtml = sortedRounds.map(([r, rd]) => {
+                    const answerColor = ALL_COLORS.find(c=>c.id===rd.answer)||{hex:'#888',fontColor:'white',name:'?'};
+                    const isSuccess = Object.values(rd.submissions||{}).every(v=>v===rd.answer||v==='piggy');
+                    const playersHtml = playerIds.map(uid => {
+                        const name = room.players[uid].name;
+                        if (rd.clueGiver===uid) return `<span class="text-[10px] bg-gray-200 px-2 py-0.5 border border-gray-400">${name}: 출제</span>`;
+                        const sub = rd.submissions?.[uid];
+                        if (!sub) return `<span class="text-[10px] bg-gray-100 px-2 py-0.5 border border-gray-300">${name}: -</span>`;
+                        const ok = sub===rd.answer||sub==='piggy';
+                        const sc = sub==='piggy'?{hex:'#1a1a1a',fontColor:'white'}:(ALL_COLORS.find(c=>c.id===sub)||{hex:'#888',fontColor:'white'});
+                        return `<span class="text-[10px] border-2 px-2 py-0.5 ${ok?'border-green-500':'border-red-500'}" style="background:${sc.hex};color:${sc.fontColor}">${name} ${ok?'✓':'✗'}</span>`;
+                    }).join('');
+                    return `<div class="pixel-border bg-white text-black p-3">
+                        <div class="flex justify-between mb-1">
+                            <span class="pixel-font text-[8px]">ROUND ${r}</span>
+                            <span class="pixel-font text-[8px] ${isSuccess?'text-green-600':'text-red-600'}">${isSuccess?'✓ CLEAR':'✗ FAIL'}</span>
+                        </div>
+                        <p class="text-[10px] text-gray-500 mb-1">${rd.selectedCategory||room.topicFlow?.[r]||''}</p>
+                        <div class="flex items-center gap-2 mb-2">
+                            <div class="w-6 h-6 border-2 border-black flex-shrink-0" style="background:${answerColor.hex}"></div>
+                            <span class="font-bold text-base">"${rd.clue||'?'}"</span>
+                        </div>
+                        <div class="flex flex-wrap gap-1">${playersHtml}</div>
+                    </div>`;
+                }).join('');
+
+                container.innerHTML = `
+                    <div class="w-full max-w-md">
+                        <h1 class="pixel-font text-xl text-yellow-400 text-center mb-1 animate-bounce">GAME OVER</h1>
+                        <p class="text-center text-lg font-bold mb-4">${successCount} / ${sortedRounds.length} 라운드 성공</p>
+                        <div class="space-y-3 mb-6 max-h-[60vh] overflow-y-auto">${roundsHtml}</div>
+                        <button onclick="location.reload()" class="pixel-btn bg-yellow-400 text-black w-full">다시 하기</button>
+                    </div>
+                `;
             }
         };
         window.toggleCard = (cid) => {
