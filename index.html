@@ -720,7 +720,7 @@ window.forceSubmitClue = () => {
                         <button onclick="window.updateState({showTopicModal: true}); window.playSound('click');" class="pixel-btn bg-blue-900 text-white text-[10px] py-2">📋 전체 주제 흐름 확인</button>
                         <div class="flex justify-between items-center px-2">
                             <div class="flex gap-1">
-                                ${[1, 2, 3, 4, 5, 6].map(n => `<div class="w-4 h-4 border-2 border-black ${n < roundNum ? 'bg-green-500' : n === roundNum ? 'bg-yellow-400' : 'bg-gray-700'}"></div>`).join('')}
+                                ${[1, 2, 3, 4, 5, 6].map(n => { const rn = room.rounds?.[n]; let cid = null; if (rn) { if (rn.clueGiver === state.user.uid) cid = rn.answer; else if (rn.submissions?.[state.user.uid]) cid = rn.submissions[state.user.uid]; } if (cid) { const hex = cid === 'piggy' ? '#1a1a1a' : (gameColors.find(c => c.id === cid)?.hex || '#888888'); return `<div class="w-4 h-4 border-2 border-black" style="background-color:${hex}"></div>`; } return `<div class="w-4 h-4 border-2 border-black ${n < roundNum ? 'bg-green-500' : n === roundNum ? 'bg-yellow-400' : 'bg-gray-700'}" ></div>`; }).join('')}
                             </div>
                             <span class="pixel-font text-[10px]">ROUND ${roundNum}</span>
                         </div>
