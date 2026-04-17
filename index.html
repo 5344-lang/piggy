@@ -697,6 +697,15 @@ window.forceSubmitClue = () => {
 
                 container.innerHTML = `
                     <div class="w-full max-w-md flex flex-col gap-4">
+                        <div class="pixel-border bg-white text-black p-2">
+                            <p class="text-[9px] text-gray-400 mb-1.5 text-center tracking-widest">MY HAND</p>
+                            <div class="flex gap-1.5 overflow-x-auto pb-1">
+                                ${hand.map(cid => {
+                                    const c = cid==='piggy'?{hex:'#1a1a1a',fontColor:'white'}:gameColors.find(x=>x.id===cid);
+                                    return `<div class="flex-shrink-0 w-8 h-8 border-2 border-black rounded-sm flex items-center justify-center text-[9px]" style="background:${c.hex};color:${c.fontColor}">${cid==='piggy'?'🐷':''}</div>`;
+                                }).join('')}
+                            </div>
+                        </div>
                         <button onclick="window.updateState({showTopicModal: true}); window.playSound('click');" class="pixel-btn bg-blue-900 text-white text-[10px] py-2">📋 전체 주제 흐름 확인</button>
                         <div class="flex justify-between items-center px-2">
                             <div class="flex gap-1">
