@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Piggy Yellow 0.6.1 - Strategic Edition</title>
+    <title>Piggy Yellow 0.6.2 - Strategic Edition</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐷</text></svg>">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
@@ -239,6 +239,9 @@ const ALL_COLORS = [
             }
         };
 
+        const saveSession = (code, name) => { localStorage.setItem('piggy_room', code); localStorage.setItem('piggy_name', name); };
+        const clearSession = () => { localStorage.removeItem('piggy_room'); localStorage.removeItem('piggy_name'); };
+
         const createRoom = async () => {
             if (!state.playerName) return updateState({ error: '이름을 입력하세요!' });
             playSound('click');
@@ -248,7 +251,7 @@ const ALL_COLORS = [
                 status: 'LOBBY', 
                 players: { [state.user.uid]: { name: state.playerName, isHost: true } } 
             });
-            state.roomCode = newCode; startSync(newCode);
+            state.roomCode = newCode; saveSession(newCode, state.playerName); startSync(newCode);
         };
 
         const joinRoom = async (code) => {
@@ -258,7 +261,7 @@ const ALL_COLORS = [
             onValue(ref(db, `artifacts/${appId}/rooms/${targetCode}`), (snap) => {
                 if (snap.exists()) { 
                     update(ref(db, `artifacts/${appId}/rooms/${targetCode}/players`), { [state.user.uid]: { name: state.playerName, isHost: false } }); 
-                    state.roomCode = targetCode; startSync(targetCode); 
+                    state.roomCode = targetCode; saveSession(targetCode, state.playerName); startSync(targetCode);
                 } else updateState({ error: '방을 찾을 수 없습니다' });
             }, { onlyOnce: true });
         };
@@ -864,7 +867,7 @@ window.forceSubmitClue = () => {
             // 사이드 플로팅 버튼 (게임 중 항상 표시)
             if (state.roomCode && room && room.status !== 'LOBBY') {
                 const side = document.createElement('div');
-                side.style.cssText = 'position:fixed;right:12px;bottom:max(80px,calc(env(safe-area-inset-bottom,0px)+80px));z-index:50;display:flex;flex-direction:column;align-items:center;gap:8px;';
+                side.style.cssText = 'position:fixed;left:12px;bottom:max(80px,calc(env(safe-area-inset-bottom,0px)+80px));z-index:50;display:flex;flex-direction:column;align-items:center;gap:8px;';
                 side.innerHTML = `
                     <button id="muteBtn" onclick="window.toggleMute()" style="width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,0.85);border:2px solid rgba(0,0,0,0.15);box-shadow:0 2px 8px rgba(0,0,0,0.15);font-size:1.3rem;cursor:pointer;display:flex;align-items:center;justify-content:center;">${bgmMuted ? '🔇' : '🔊'}</button>
                     <button id="emojiToggleBtn" onclick="window.toggleEmojiPanel()" style="width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,0.85);border:2px solid rgba(0,0,0,0.15);box-shadow:0 2px 8px rgba(0,0,0,0.15);font-size:1.4rem;cursor:pointer;display:flex;align-items:center;justify-content:center;">😊</button>
@@ -886,6 +889,7 @@ window.forceSubmitClue = () => {
             update(ref(db, `artifacts/${appId}/rooms/${state.roomCode}`), { draftCards: cards });
         };
         window.leaveRoom = () => {
+            clearSession();
             stopBGM();
             updateState({ roomCode: '', roomData: null, tempSelectedCards: [], selectedTopic: '', showTopicModal: false, clueWarning: { show: false } });
         };
@@ -893,7 +897,27 @@ window.forceSubmitClue = () => {
         window.confirmSetup = confirmSetup; window.submitClue = submitClue; window.submitCard = submitCard;
         window.newGame = newGame; window.updateState = updateState; window.playSound = playSound;
 
-        signInAnonymously(auth); onAuthStateChanged(auth, u => { if(u) { state.user = u; render(); } });
+        signInAnonymously(auth); onAuthStateChanged(auth, u => {
+            if (!u) return;
+            state.user = u;
+            const savedRoom = localStorage.getItem('piggy_room');
+            const savedName = localStorage.getItem('piggy_name');
+            if (savedRoom && savedName) {
+                state.playerName = savedName;
+                onValue(ref(db, `artifacts/${appId}/rooms/${savedRoom}`), (snap) => {
+                    const data = snap.val();
+                    if (data && data.players && data.players[u.uid]) {
+                        state.roomCode = savedRoom;
+                        startSync(savedRoom);
+                    } else {
+                        clearSession();
+                        render();
+                    }
+                }, { onlyOnce: true });
+            } else {
+                render();
+            }
+        });
     </script>
 </body>
 </html>
