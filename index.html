@@ -274,9 +274,56 @@ const ALL_COLORS = [
             });
         };
 
+        const hslToHex = (h, s, l) => {
+            h = ((h % 360) + 360) % 360;
+            s /= 100; l /= 100;
+            const a = s * Math.min(l, 1 - l);
+            const f = n => {
+                const k = (n + h / 30) % 12;
+                const c = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+                return Math.round(255 * c).toString(16).padStart(2, '0');
+            };
+            return `#${f(0)}${f(8)}${f(4)}`;
+        };
+
+        const generateGameColors = () => {
+            // 빨·주·노·초·파·남·보 7계열
+            const families = [
+                { min: -15, max: 15  },  // 빨
+                { min: 15,  max: 45  },  // 주
+                { min: 45,  max: 75  },  // 노
+                { min: 75,  max: 165 },  // 초
+                { min: 165, max: 225 },  // 파
+                { min: 225, max: 270 },  // 남
+                { min: 270, max: 345 },  // 보
+            ];
+            // 3개 계열은 3색, 4개 계열은 2색 → 합계 17
+            const counts = [3, 3, 3, 2, 2, 2, 2].sort(() => 0.5 - Math.random());
+            const result = [];
+            families.forEach((fam, fi) => {
+                const usedL = [];
+                for (let j = 0; j < counts[fi]; j++) {
+                    let h, s, l, attempts = 0;
+                    do {
+                        h = fam.min + Math.random() * (fam.max - fam.min);
+                        s = 55 + Math.random() * 40;   // 채도 55~95%
+                        l = 20 + Math.random() * 55;   // 명도 20~75%
+                        attempts++;
+                    } while (attempts < 30 && usedL.some(ul => Math.abs(ul - l) < 18));
+                    usedL.push(l);
+                    const hex = hslToHex(h, s, l);
+                    result.push({ id: `c${result.length}`, hex, name: hex.toUpperCase(), fontColor: l > 58 ? 'black' : 'white' });
+                }
+            });
+            return result.sort(() => 0.5 - Math.random());
+        };
+
         const startGame = async () => {
             playSound('click');
-            await update(ref(db, `artifacts/${appId}/rooms/${state.roomCode}`), { status: 'SELECTING_CARDS' });
+            await update(ref(db, `artifacts/${appId}/rooms/${state.roomCode}`), {
+                status: 'SELECTING_CARDS',
+                allColors: generateGameColors()
+            });
         };
 
         const confirmSetup = async () => {
@@ -376,6 +423,9 @@ window.forceSubmitClue = () => {
             }
 
             const room = state.roomData; if (!room) return;
+            const gameColors = room.allColors
+                ? (Array.isArray(room.allColors) ? room.allColors : Object.values(room.allColors))
+                : [];
 
             if (room.status === 'LOBBY') {
                 const players = Object.values(room.players);
@@ -393,7 +443,7 @@ window.forceSubmitClue = () => {
                         <div class="w-full max-w-md pixel-border bg-white text-black p-4">
                             <h2 class="pixel-font text-[10px] text-center mb-4 text-red-600 font-bold">이번 게임에 쓸 카드 6장을 고르세요 (${state.tempSelectedCards.length}/6)</h2>
                             <div class="grid grid-cols-4 gap-2 mb-6">
-                                ${ALL_COLORS.map(c => `<div onclick="window.toggleCard('${c.id}')" class="aspect-square border-2 border-black cursor-pointer flex items-center justify-center text-[8px] text-center ${state.tempSelectedCards.includes(c.id) ? 'ring-4 ring-yellow-400 scale-105' : ''}" style="background-color: ${c.hex}; color: ${c.fontColor}">${c.name}</div>`).join('')}
+                                ${gameColors.map(c => `<div onclick="window.toggleCard('${c.id}')" class="aspect-square border-2 border-black cursor-pointer flex items-center justify-center text-[8px] text-center ${state.tempSelectedCards.includes(c.id) ? 'ring-4 ring-yellow-400 scale-105' : ''}" style="background-color: ${c.hex}; color: ${c.fontColor}">${c.name}</div>`).join('')}
                             </div>
                             <button onclick="window.confirmSetup()" class="pixel-btn bg-black text-white w-full" ${state.tempSelectedCards.length !== 6 ? 'disabled' : ''}>카드 선택 완료 & 주제 생성</button>
                         </div>
@@ -454,7 +504,7 @@ window.forceSubmitClue = () => {
                                 <input id="clueWord" placeholder="제시어 입력" class="pixel-input mb-4 text-base text-center">
                                 <div class="grid grid-cols-4 gap-2 mb-6">
                                     ${hand.map(cid => { 
-                                        const c = cid==='piggy'?{hex:'#1a1a1a', name:'JOKER', fontColor:'white'}:ALL_COLORS.find(x=>x.id===cid); 
+                                        const c = cid==='piggy'?{hex:'#1a1a1a', name:'JOKER', fontColor:'white'}:gameColors.find(x=>x.id===cid); 
                                         return `<div onclick="window.selCol='${cid}'; document.querySelectorAll('.col').forEach(e=>e.style.border='2px solid black'); this.style.border='4px solid #facc15'; window.playSound('click');" class="col aspect-square border-2 border-black cursor-pointer flex items-center justify-center text-[8px] text-center" style="background-color: ${c.hex}; color: ${c.fontColor}">${cid==='piggy'?'🐷':c.name}</div>` 
                                     }).join('')}
                                 </div>
@@ -468,7 +518,7 @@ window.forceSubmitClue = () => {
                             ${roundData.clue && !isClueGiver ? `
                                 <div class="grid grid-cols-3 gap-3">
                                     ${hand.map(cid => { 
-                                        const c = cid==='piggy'?{hex:'#1a1a1a', name:'PIGGY', fontColor:'white'}:ALL_COLORS.find(x=>x.id===cid); 
+                                        const c = cid==='piggy'?{hex:'#1a1a1a', name:'PIGGY', fontColor:'white'}:gameColors.find(x=>x.id===cid); 
                                         return `<div onclick="!${hasSub} && window.submitCard('${cid}')" class="pixel-card ${hasSub && roundData.submissions?.[state.user.uid] === cid ? 'selected' : ''} ${hasSub ? 'disabled' : ''}" style="background-color: ${c.hex}; color: ${c.fontColor}">${cid==='piggy'?'🐷':''}<span class="text-[8px] mt-1">${c.name}</span></div>` 
                                     }).join('')}
                                 </div>
@@ -530,7 +580,7 @@ window.forceSubmitClue = () => {
                 ).length;
 
                 const roundsHtml = sortedRounds.map(([r, rd]) => {
-                    const answerColor = ALL_COLORS.find(c=>c.id===rd.answer)||{hex:'#888',fontColor:'white',name:'?'};
+                    const answerColor = gameColors.find(c=>c.id===rd.answer)||{hex:'#888',fontColor:'white',name:'?'};
                     const isSuccess = Object.values(rd.submissions||{}).every(v=>v===rd.answer||v==='piggy');
                     const playersHtml = playerIds.map(uid => {
                         const name = room.players[uid].name;
@@ -538,7 +588,7 @@ window.forceSubmitClue = () => {
                         const sub = rd.submissions?.[uid];
                         if (!sub) return `<span class="text-[10px] bg-gray-100 px-2 py-0.5 border border-gray-300">${name}: -</span>`;
                         const ok = sub===rd.answer||sub==='piggy';
-                        const sc = sub==='piggy'?{hex:'#1a1a1a',fontColor:'white'}:(ALL_COLORS.find(c=>c.id===sub)||{hex:'#888',fontColor:'white'});
+                        const sc = sub==='piggy'?{hex:'#1a1a1a',fontColor:'white'}:(gameColors.find(c=>c.id===sub)||{hex:'#888',fontColor:'white'});
                         return `<span class="text-[10px] border-2 px-2 py-0.5 ${ok?'border-green-500':'border-red-500'}" style="background:${sc.hex};color:${sc.fontColor}">${name} ${ok?'✓':'✗'}</span>`;
                     }).join('');
                     return `<div class="pixel-border bg-white text-black p-3">
