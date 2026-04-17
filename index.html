@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Piggy Yellow - 8-Bit Coop Game</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #1a1a1a;
+            color: white;
+            font-family: 'monospace';
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .pixel-font { font-family: 'Press Start 2P', cursive; }
+        .pixel-border {
+            border: 4px solid black;
+            box-shadow: 4px 4px 0px 0px rgba(0,0,0,1);
+        }
+        .pixel-btn {
+            position: relative;
+            padding: 1rem;
+            border-top: 4px solid black;
+            border-left: 4px solid black;
+            box-shadow: 4px 4px 0px 0px rgba(0,0,0,1);
+            transition: all 0.1s;
+            text-transform: uppercase;
+        }
+        .pixel-btn:active:not(:disabled) {
+            transform: translate(4px, 4px);
+            box-shadow: 0px 0px 0px 0px rgba(0,0,0,1);
+        }
+        .pixel-btn:disabled {
+            background-color: #4b5563;
+            box-shadow: none;
+            transform: translate(4px, 4px);
+            cursor: not-allowed;
+        }
+        .pixel-input {
+            width: 100%;
+            padding: 1rem;
+            background-color: white;
+            border: 4px solid black;
+            box-shadow: 4px 4px 0px 0px rgba(0,0,0,1);
+            color: black;
+            outline: none;
+        }
+        .pixel-card {
+            width: 80px;
+            height: 110px;
+            border: 4px solid black;
+            box-shadow: 4px 4px 0px 0px rgba(0,0,0,1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            cursor: pointer;
+            transition: all 0.1s;
+        }
+        .pixel-card:active:not(.disabled) {
+            transform: translate(4px, 4px);
+            box-shadow: 0px 0px 0px 0px rgba(0,0,0,1);
+        }
+        .pixel-card.selected {
+            border-color: #facc15;
+            transform: scale(1.05);
+            box-shadow: 0px 0px 10px 2px #facc15;
+            z-index: 10;
+        }
+        .pixel-card.disabled {
+            opacity: 0.3;
+            filter: grayscale(1);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        @keyframes pixel-bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        .animate-pixel-bounce { animation: pixel-bounce 1s infinite; }
+    </style>
+</head>
+<body class="overflow-x-hidden">
+    <div id="app" class="min-h-screen flex flex-col p-4 items-center justify-center">
+        <div id="loading" class="pixel-font text-xs animate-pulse">SYSTEM LOADING...</div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+        import { getDatabase, ref, set, onValue, update } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
+
+        // --- Firebase Configuration ---
+const firebaseConfig = {
+  apiKey: "AIzaSyDroroAeupG2Xik7P42mJ8HPHvGi7JOp0w",
+  authDomain: "piggy-yellow-game.firebaseapp.com",
+  projectId: "piggy-yellow-game",
+  storageBucket: "piggy-yellow-game.firebasestorage.app",
+  messagingSenderId: "903172799700",
+  appId: "1:903172799700:web:f235053288e6f1db710f41",
+  measurementId: "G-5HGPSR9M26"
+};
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getDatabase(app);
+        const appId = 'piggy-yellow-pixel';
+
+        // --- 8-bit Sound Engine ---
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const playSound = (type) => {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            const now = audioCtx.currentTime;
+
+            switch (type) {
+                case 'click':
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(800, now);
+                    osc.frequency.exponentialRampToValueAtTime(100, now + 0.1);
+                    gain.gain.setValueAtTime(0.1, now);
+                    gain.gain.linearRampToValueAtTime(0, now + 0.1);
+                    osc.start(); osc.stop(now + 0.1);
+                    break;
+                case 'success':
+                    osc.type = 'triangle';
+                   .forEach((f, i) => {
+                        osc.frequency.setValueAtTime(f, now + i * 0.1);
+                    });
+                    gain.gain.setValueAtTime(0.1, now);
+                    gain.gain.linearRampToValueAtTime(0, now + 0.4);
+                    osc.start(); osc.stop(now + 0.4);
+                    break;
+                case 'fail':
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(200, now);
+                    osc.frequency.linearRampToValueAtTime(50, now + 0.5);
+                    gain.gain.setValueAtTime(0.1, now);
+                    gain.gain.linearRampToValueAtTime(0, now + 0.5);
+                    osc.start(); osc.stop(now + 0.5);
+                    break;
+                case 'start':
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(400, now);
+                    osc.frequency.exponentialRampToValueAtTime(1200, now + 0.2);
+                    gain.gain.setValueAtTime(0.1, now);
+                    gain.gain.linearRampToValueAtTime(0, now + 0.2);
+                    osc.start(); osc.stop(now + 0.2);
+                    break;
+            }
+        };
+
+        // --- Game Data ---
+        const ALL_COLORS = [
+            { id: 'red', name: 'RED', hex: '#FF0000' },
+            { id: 'blue', name: 'BLUE', hex: '#0000FF' },
+            { id: 'green', name: 'GREEN', hex: '#00FF00' },
+            { id: 'orange', name: 'ORANGE', hex: '#FF8800' },
+            { id: 'purple', name: 'PURPLE', hex: '#AA00FF' },
+            { id: 'pink', name: 'PINK', hex: '#FF00AA' },
+            { id: 'brown', name: 'BROWN', hex: '#884400' },
+            { id: 'black', name: 'BLACK', hex: '#000000' },
+            { id: 'white', name: 'WHITE', hex: '#FFFFFF' },
+            { id: 'gray', name: 'GRAY', hex: '#888888' },
+            { id: 'lime', name: 'LIME', hex: '#CCFF00' },
+            { id: 'cyan', name: 'CYAN', hex: '#00FFFF' },
+            { id: 'indigo', name: 'INDIGO', hex: '#4400FF' },
+            { id: 'emerald', name: 'EMERALD', hex: '#00AA88' },
+            { id: 'rose', name: 'ROSE', hex: '#FF4488' },
+            { id: 'teal', name: 'TEAL', hex: '#008888' },
+            { id: 'amber', name: 'AMBER', hex: '#FFCC00' },
+        ];
+
+        // --- State Management ---
+        let state = {
+            user: null,
+            roomCode: '',
+            roomData: null,
+            playerName: '',
+            error: ''
+        };
+
+        const updateState = (newState) => {
+            state = { ...state, ...newState };
+            render();
+        };
+
+        // --- Game Logic ---
+        const createRoom = async () => {
+            if (!state.playerName) return updateState({ error: '이름을 입력하세요!' });
+            playSound('click');
+            const newCode = Math.random().toString(36).substring(2, 6).toUpperCase();
+            const initialData = {
+                host: state.user.uid,
+                status: 'LOBBY',
+                players: { [state.user.uid]: { name: state.playerName, isHost: true } },
+                currentRound: 1,
+                removedCards: [],
+            };
+            await set(ref(db, `artifacts/${appId}/rooms/${newCode}`), initialData);
+            state.roomCode = newCode;
+            startSync(newCode);
+        };
+
+        const joinRoom = async (code) => {
+            if (!state.playerName || !code) return updateState({ error: '이름과 코드를 입력하세요!' });
+            playSound('click');
+            const targetCode = code.toUpperCase();
+            const roomRef = ref(db, `artifacts/${appId}/rooms/${targetCode}`);
+            onValue(roomRef, (snapshot) => {
+                if (snapshot.exists()) {
+                    update(ref(db, `artifacts/${appId}/rooms/${targetCode}/players`), {
+                        [state.user.uid]: { name: state.playerName, isHost: false }
+                    });
+                    state.roomCode = targetCode;
+                    startSync(targetCode);
+                } else {
+                    updateState({ error: '방을 찾을 수 없습니다' });
+                }
+            }, { onlyOnce: true });
+        };
+
+        const startSync = (code) => {
+            let advancePending = false;
+            const roomRef = ref(db, `artifacts/${appId}/rooms/${code}`);
+            onValue(roomRef, (snapshot) => {
+                const data = snapshot.val();
+                if (!data) return;
+
+                // Host handles round advancement logic (Prevention of Race Condition)
+                if (data.status === 'PLAYING' && data.host === state.user?.uid && !advancePending) {
+                    const playerIds = Object.keys(data.players || {});
+                    const roundData = data.rounds?.[data.currentRound];
+                    const subCount = Object.keys(roundData?.submissions || {}).length;
+                    
+                    if (roundData?.clue && subCount === playerIds.length - 1) { // ClueGiver 제외 전원 제출
+                        advancePending = true;
+                        if (data.currentRound < 6) {
+                            setTimeout(() => {
+                                advancePending = false;
+                                update(ref(db, `artifacts/${appId}/rooms/${code}`), {
+                                    currentRound: data.currentRound + 1
+                                });
+                            }, 1200);
+                        } else {
+                            update(ref(db, `artifacts/${appId}/rooms/${code}`), { status: 'REVEAL' });
+                        }
+                    }
+                }
+
+                if (data.status === 'REVEAL' && state.roomData?.status !== 'REVEAL') {
+                    const rounds = Object.values(data.rounds || {});
+                    const allCorrect = rounds.length === 6 && rounds.every(r => {
+                        const subs = Object.values(r.submissions || {});
+                        return subs.length > 0 && subs.every(v => v === r.answer || v === 'piggy');
+                    });
+                    playSound(allCorrect ? 'success' : 'fail');
+                }
+
+                updateState({ roomData: data });
+            });
+        };
+
+        const startGame = async () => {
+            playSound('start');
+            const shuffled = [...ALL_COLORS].sort(() => 0.5 - Math.random());
+            const removed = shuffled.slice(0, 6).map(c => c.id);
+            await update(ref(db, `artifacts/${appId}/rooms/${state.roomCode}`), {
+                status: 'PLAYING',
+                removedCards: removed,
+                currentRound: 1,
+            });
+        };
+
+        const submitClue = async (word, colorId) => {
+            if (!word || !colorId) return;
+            playSound('click');
+            await update(ref(db, `artifacts/${appId}/rooms/${state.roomCode}/rounds/${state.roomData.currentRound}`), {
+                clue: word,
+                answer: colorId,
+                clueGiver: state.user.uid
+            });
+        };
+
+        const submitCard = async (colorId) => {
+            playSound('click');
+            await update(ref(db, `artifacts/${appId}/rooms/${state.roomCode}/rounds/${state.roomData.currentRound}/submissions`), {
+                [state.user.uid]: colorId
+            });
+        };
+
+        const resetGame = () => {
+            playSound('click');
+            window.location.reload();
+        };
+
+        // --- Rendering Engine ---
+        const render = () => {
+            const container = document.getElementById('app');
+            if (!state.user) {
+                container.innerHTML = `<div class="pixel-font text-xs animate-pulse">CONNECTING...</div>`;
+                return;
+            }
+
+            if (!state.roomCode) {
+                container.innerHTML = `
+                    <div class="flex flex-col items-center gap-8 w-full max-w-xs">
+                        <div class="text-center">
+                            <div class="text-8xl mb-6 animate-pixel-bounce inline-block">🐷</div>
+                            <h1 class="pixel-font text-2xl text-yellow-400 mb-2 leading-tight uppercase">PIGGY<br>YELLOW</h1>
+                            <p class="pixel-font text-[8px] text-gray-500 uppercase tracking-widest">8-bit coop adventure</p>
+                        </div>
+                        <div class="w-full space-y-6">
+                            <input id="playerName" value="${state.playerName}" placeholder="이름을 입력하세요" class="pixel-input" oninput="state.playerName = this.value">
+                            <div class="flex flex-col gap-4">
+                                <button onclick="createRoom()" class="pixel-btn bg-yellow-400 pixel-font text-[10px]">방 만들기</button>
+                                <div class="flex gap-2">
+                                    <input id="joinCode" placeholder="코드" class="pixel-input uppercase flex-1">
+                                    <button onclick="joinRoom(document.getElementById('joinCode').value)" class="pixel-btn bg-blue-500 pixel-font text-[10px]">참가</button>
+                                </div>
+                            </div>
+                            ${state.error ? `<p class="pixel-font text-[8px] text-red-500 text-center uppercase tracking-tighter">${state.error}</p>` : ''}
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            const room = state.roomData;
+            if (!room) return;
+
+            if (room.status === 'LOBBY') {
+                const playersList = Object.values(room.players || {});
+                container.innerHTML = `
+                    <div class="w-full max-w-md pixel-border bg-white text-black p-6">
+                        <div class="flex justify-between items-center mb-6">
+                            <h2 class="pixel-font text-xs">로비</h2>
+                            <div class="bg-yellow-400 p-2 text-xs pixel-font border-2 border-black">${state.roomCode}</div>
+                        </div>
+                        <div class="space-y-4 mb-8">
+                            ${playersList.map(p => `
+                                <div class="flex items-center gap-3 border-b-2 border-black pb-2">
+                                    <span>🐷</span>
+                                    <span class="pixel-font text-[10px]">${p.name} ${p.isHost ? '[H]' : ''}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                        ${room.host === state.user.uid ?
+                            `<button onclick="startGame()" class="pixel-btn bg-green-500 w-full pixel-font text-[10px]" ${playersList.length < 2 ? 'disabled' : ''}>게임 시작</button>` :
+                            `<p class="pixel-font text-[8px] animate-pulse text-center">호스트를 기다리는 중...</p>`
+                        }
+                    </div>
+                `;
+            } else if (room.status === 'PLAYING') {
+                const currentRound = room.currentRound;
+                const roundData = room.rounds?.[currentRound] || {};
+                const playersIds = Object.keys(room.players || {});
+                const playerIndex = playersIds.indexOf(state.user.uid);
+                const isClueGiver = (currentRound - 1) % playersIds.length === playerIndex;
+                const hasSubmitted = (roundData.submissions && roundData.submissions[state.user.uid]) || (isClueGiver && roundData.answer);
+                const myDeck = ALL_COLORS.filter(c => !room.removedCards.includes(c.id));
+                const usedCards = [];
+
+                if (room.rounds) {
+                    Object.values(room.rounds).forEach(r => {
+                        if (r.submissions && r.submissions[state.user.uid]) usedCards.push(r.submissions[state.user.uid]);
+                        if (r.clueGiver === state.user.uid && r.answer) usedCards.push(r.answer);
+                    });
+                }
+
+                let content = `
+                    <div class="w-full max-w-md flex flex-col h-full">
+                        <div class="flex justify-between mb-4 px-2">
+                            <div class="flex gap-1">
+                                ${.map(n => `<div class="w-4 h-4 border-2 border-black ${n < currentRound ? 'bg-green-500' : n === currentRound ? 'bg-yellow-400' : 'bg-gray-700'}"></div>`).join('')}
+                            </div>
+                            <span class="pixel-font text-[8px]">LV.${currentRound}</span>
+                        </div>
+                `;
+
+                if (isClueGiver && !roundData.clue) {
+                    content += `
+                        <div class="pixel-border bg-white text-black p-6 w-full">
+                            <h2 class="pixel-font text-xs mb-4 text-center">당신은 출제자입니다</h2>
+                            <div class="space-y-4">
+                                <input id="clueWord" placeholder="제시어 입력" class="pixel-input">
+                                <div class="grid grid-cols-4 gap-2">
+                                    ${myDeck.filter(c => !usedCards.includes(c.id)).map(c => `
+                                        <div onclick="window.selectedColor = '${c.id}'; document.querySelectorAll('.color-choice').forEach(el=>el.style.border='2px solid black'); this.style.border='4px solid #fbbf24'" class="color-choice aspect-square border-2 border-black cursor-pointer shadow-sm" style="background-color: ${c.hex}"></div>
+                                    `).join('')}
+                                </div>
+                                <button onclick="submitClue(document.getElementById('clueWord').value, window.selectedColor)" class="pixel-btn bg-red-500 w-full pixel-font text-[10px]">제시어 전송</button>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    content += `
+                        <div class="pixel-border bg-yellow-400 text-black p-6 mb-6 text-center shadow-lg">
+                            <p class="pixel-font text-[8px] mb-2 text-yellow-800 uppercase tracking-tighter font-bold">제시어</p>
+                            <h2 class="pixel-font text-xl uppercase tracking-tighter">${roundData.clue || '기다리는 중...'}</h2>
+                        </div>
+                        ${roundData.clue && !isClueGiver ? `
+                            <div class="grid grid-cols-3 gap-4 justify-items-center">
+                                ${myDeck.map(c => `
+                                    <div onclick="!${hasSubmitted || usedCards.includes(c.id)} && submitCard('${c.id}')" 
+                                         class="pixel-card ${hasSubmitted && roundData.submissions?.[state.user.uid] === c.id ? 'selected' : ''} ${hasSubmitted || usedCards.includes(c.id) ? 'disabled' : ''}"
+                                         style="background-color: ${c.hex}">
+                                        <span class="pixel-font text-[6px] font-black ${['white','yellow','lime'].includes(c.id) ? 'text-black' : 'text-white'}">${c.name}</span>
+                                    </div>
+                                `).join('')}
+                                <div onclick="!${hasSubmitted || usedCards.includes('piggy')} && submitCard('piggy')" 
+                                     class="pixel-card bg-yellow-400 ${hasSubmitted && roundData.submissions?.[state.user.uid] === 'piggy' ? 'selected' : ''} ${hasSubmitted || usedCards.includes('piggy') ? 'disabled' : ''}">
+                                    <span class="text-2xl">🐷</span>
+                                    <span class="pixel-font text-[6px] text-black">PIGGY</span>
+                                </div>
+                            </div>
+                        ` : hasSubmitted ? `<p class="pixel-font text-[8px] text-center animate-pulse mt-10 uppercase font-bold tracking-widest">SUBMITTED! WAITING...</p>` : ''}
+                    `;
+                }
+                content += `</div>`;
+                container.innerHTML = content;
+            } else if (room.status === 'REVEAL') {
+                const roundsList = Object.entries(room.rounds || {}).sort(([a],[b]) => Number(a)-Number(b));
+                const allCorrect = roundsList.length === 6 && roundsList.every(([_, d]) => {
+                    const subs = Object.values(d.submissions || {});
+                    return subs.length > 0 && subs.every(v => v === d.answer || v === 'piggy');
+                });
+
+                container.innerHTML = `
+                    <div class="w-full max-w-md mx-auto py-10">
+                        <div class="pixel-border bg-white text-black p-8 mb-8 text-center shadow-xl">
+                            <h1 class="pixel-font text-xl mb-4 uppercase">${allCorrect ? 'VICTORY' : 'DEFEAT'}</h1>
+                            <p class="pixel-font text-[8px] text-gray-400 uppercase tracking-widest">SCORE: ${roundsList.filter(([_, d]) => {
+                                const subs = Object.values(d.submissions || {});
+                                return subs.length > 0 && subs.every(v => v === d.answer || v === 'piggy');
+                            }).length}/6</p>
+                        </div>
+                        <div class="space-y-4 mb-10">
+                            ${roundsList.map(([idx, data]) => {
+                                const subs = Object.values(data.submissions || {});
+                                const isSuccess = subs.every(v => v === data.answer || v === 'piggy');
+                                return `
+                                    <div class="pixel-border p-4 flex justify-between items-center ${isSuccess ? 'bg-green-900 border-green-500' : 'bg-red-900 border-red-500'} transition-colors">
+                                        <div class="flex-1">
+                                            <p class="pixel-font text-[6px] text-gray-300 uppercase tracking-tighter">LV.${idx} ${data.clue}</p>
+                                            <div class="flex gap-2 mt-2 flex-wrap">
+                                                <div class="w-8 h-8 border-2 border-white shadow-sm" style="background-color: ${ALL_COLORS.find(c => c.id === data.answer)?.hex}"></div>
+                                                <span class="pixel-font text-[10px] self-center text-white">▶</span>
+                                                ${subs.map(s => `
+                                                    <div class="w-8 h-8 border-2 border-white flex items-center justify-center text-[8px] shadow-sm" style="background-color: ${s === 'piggy' ? '#FFFF00' : ALL_COLORS.find(c => c.id === s)?.hex}">
+                                                        ${s === 'piggy' ? 'P' : ''}
+                                                    </div>
+                                                `).join('')}
+                                            </div>
+                                        </div>
+                                        <span class="pixel-font text-lg text-white font-black ml-2">${isSuccess ? 'O' : 'X'}</span>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                        <button onclick="resetGame()" class="pixel-btn bg-yellow-400 w-full pixel-font text-[10px]">Play Again</button>
+                    </div>
+                `;
+            }
+        };
+
+        // 전역 함수 노출
+        window.createRoom = createRoom;
+        window.joinRoom = joinRoom;
+        window.startGame = startGame;
+        window.submitClue = submitClue;
+        window.submitCard = submitCard;
+        window.resetGame = resetGame;
+
+        // --- 초기화 ---
+        signInAnonymously(auth);
+        onAuthStateChanged(auth, (u) => {
+            if (u) {
+                state.user = u;
+                render();
+            }
+        });
+    </script>
+</body>
+</html>
