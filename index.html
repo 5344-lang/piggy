@@ -33,7 +33,7 @@
     </style>
 </head>
 <body class="overflow-x-hidden text-sm">
-    <div id="app" class="min-h-screen flex flex-col p-3 pb-20 sm:p-4 sm:pb-8 items-center justify-start sm:justify-center overflow-y-auto">
+    <div id="app" class="min-h-screen flex flex-col py-6 px-3 sm:p-4 items-center justify-center">
         <div id="loading" class="pixel-font text-xs animate-pulse text-gray-700">SYSTEM LOADING...</div>
     </div>
 
@@ -867,9 +867,9 @@ window.forceSubmitClue = () => {
             // 사이드 플로팅 버튼 (게임 중 항상 표시)
             if (state.roomCode && room && room.status !== 'LOBBY') {
                 const side = document.createElement('div');
-                side.style.cssText = 'position:fixed;left:12px;bottom:max(80px,calc(env(safe-area-inset-bottom,0px)+80px));z-index:50;display:flex;flex-direction:column;align-items:center;gap:8px;';
+                side.style.cssText = 'position:fixed;left:12px;bottom:max(16px,env(safe-area-inset-bottom,16px));z-index:50;display:flex;flex-direction:column;align-items:center;gap:8px;';
                 side.innerHTML = `
-                    ${room.host === state.user.uid && room.status !== 'REVEAL' ? `<button onclick="window.forceEndGame()" title="게임종료" style="width:44px;height:44px;border-radius:50%;background:rgba(239,68,68,0.9);border:2px solid rgba(0,0,0,0.2);box-shadow:0 2px 8px rgba(0,0,0,0.2);font-size:1.1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;">🚫</button>` : ""}
+                    ${room.status !== 'REVEAL' ? `<button onclick="window.forceEndGame()" title="게임종료" style="width:44px;height:44px;border-radius:50%;background:rgba(239,68,68,0.9);border:2px solid rgba(0,0,0,0.2);box-shadow:0 2px 8px rgba(0,0,0,0.2);font-size:1.1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;">🚫</button>` : ""}
                     <button id="muteBtn" onclick="window.toggleMute()" style="width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,0.85);border:2px solid rgba(0,0,0,0.15);box-shadow:0 2px 8px rgba(0,0,0,0.15);font-size:1.3rem;cursor:pointer;display:flex;align-items:center;justify-content:center;">${bgmMuted ? '🔇' : '🔊'}</button>
                     <button id="emojiToggleBtn" onclick="window.toggleEmojiPanel()" style="width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,0.85);border:2px solid rgba(0,0,0,0.15);box-shadow:0 2px 8px rgba(0,0,0,0.15);font-size:1.4rem;cursor:pointer;display:flex;align-items:center;justify-content:center;">😊</button>
                     <div id="emojiPanel" style="display:none;flex-direction:column;gap:6px;align-items:center;">
@@ -895,8 +895,14 @@ window.forceSubmitClue = () => {
             updateState({ roomCode: '', roomData: null, tempSelectedCards: [], selectedTopic: '', showTopicModal: false, clueWarning: { show: false } });
         };
         window.forceEndGame = async () => {
-            if (!confirm('게임을 강제 종료하시겠습니까?')) return;
-            await update(ref(db, `artifacts/${appId}/rooms/${state.roomCode}`), { status: "REVEAL" });
+            const isHost = state.roomData?.host === state.user.uid;
+            if (isHost) {
+                if (!confirm("전체 게임을 강제 종료하시겠습니까?")) return;
+                await update(ref(db, `artifacts/${appId}/rooms/${state.roomCode}`), { status: "REVEAL" });
+            } else {
+                if (!confirm("게임에서 나가시겠습니까?")) return;
+                window.leaveRoom();
+            }
         };
         window.createRoom = createRoom; window.joinRoom = joinRoom; window.startGame = startGame;
         window.confirmSetup = confirmSetup; window.submitClue = submitClue; window.submitCard = submitCard;
