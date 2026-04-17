@@ -192,7 +192,7 @@ const ALL_COLORS = [
         };
         window.sendReaction = sendReaction;
 
-        let state = { user: null, roomCode: '', roomData: null, playerName: '', error: '', tempSelectedCards: [], showTopicModal: false, clueWarning: { show: false, word: '', found: [], colorId: '', category: '' }
+        let state = { user: null, roomCode: '', roomData: null, playerName: '', error: '', tempSelectedCards: [], showTopicModal: false, selectedTopic: '', clueWarning: { show: false, word: '', found: [], colorId: '', category: '' }
 };
         window.state = state;
 
@@ -314,8 +314,12 @@ const ALL_COLORS = [
                     playSound(allCorrect ? 'success' : 'fail');
                 }
 
+                if (state.roomData?.currentRound !== undefined && state.roomData.currentRound !== data.currentRound) {
+                    updateState({ selectedTopic: '' });
+                }
+
                 if (data.status === 'SELECTING_CARDS' && state.roomData?.status === 'REVEAL') {
-                    updateState({ tempSelectedCards: [], showTopicModal: false, clueWarning: { show: false } });
+                    updateState({ tempSelectedCards: [], showTopicModal: false, clueWarning: { show: false }, selectedTopic: '' });
                 }
 
                 updateState({ roomData: data });
@@ -379,7 +383,7 @@ const ALL_COLORS = [
             playSound('start');
             const shuffledCats = [...CATEGORY_POOL].sort(() => 0.5 - Math.random());
             const topicFlow = {};
-            for(let i = 1; i <= 6; i++) topicFlow[i] = shuffledCats[i - 1];
+            for(let i = 1; i <= 6; i++) topicFlow[i] = [shuffledCats[(i-1)*3], shuffledCats[(i-1)*3+1], shuffledCats[(i-1)*3+2]];
             await update(ref(db, `artifacts/${appId}/rooms/${state.roomCode}`), {
                 status: 'TOPIC_REVEAL',
                 selectedCards: state.tempSelectedCards,
@@ -603,7 +607,7 @@ window.forceSubmitClue = () => {
                     container.innerHTML = `
                         <div class="w-full max-w-md pixel-border bg-white text-black p-4">
                             <h2 class="pixel-font text-[10px] text-center mb-1 text-gray-500">방장이 카드를 고르는 중...</h2>
-                            <p class="text-center text-[10px] mb-4 animate-pulse text-yellow-600">${draft.length}/6 선택됨</p>
+                            <p class="text-center text-[10px] mb-4 animate-pulse text-gray-600">${draft.length}/6 선택됨</p>
                             <div class="grid grid-cols-4 gap-2 mb-4">
                                 ${gameColors.map(c => `<div class="aspect-square border-2 border-black flex items-center justify-center text-[8px] text-center ${draft.includes(c.id) ? 'ring-4 ring-yellow-400 scale-105' : 'opacity-60'}" style="background-color: ${c.hex}; color: ${c.fontColor}">${c.name}</div>`).join('')}
                             </div>
@@ -614,14 +618,15 @@ window.forceSubmitClue = () => {
             else if (room.status === 'TOPIC_REVEAL') {
                 container.innerHTML = `
                     <div class="w-full max-w-md pixel-border bg-white text-black p-6">
-                        <h2 class="pixel-font text-xs mb-4 text-center border-b-2 border-black pb-2">📋 이번 판 주제 리스트 (6라운드)</h2>
+                        <h2 class="pixel-font text-xs mb-4 text-center border-b-2 border-black pb-2">📋 이번 판 주제 선택지 (6라운드)</h2>
                         <div class="space-y-3 mb-8 max-h-96 overflow-y-auto">
-                            ${Object.entries(room.topicFlow).map(([r, cat]) => `
-                                <div class="border-l-4 border-yellow-400 pl-3 py-1 text-left">
-                                    <p class="text-[10px] font-bold">ROUND ${r}</p>
-                                    <p class="text-[12px]">${cat}</p>
-                                </div>
-                            `).join('')}
+                            ${Object.entries(room.topicFlow).map(([r, cats]) => {
+                                const arr = Array.isArray(cats) ? cats : [cats];
+                                return `<div class="border-l-4 border-black pl-3 py-1 text-left">
+                                    <p class="text-[10px] font-bold mb-1">ROUND ${r}</p>
+                                    <div class="flex gap-1 flex-wrap">${arr.map(c => `<span class="bg-gray-100 border border-gray-400 px-2 py-0.5 text-[11px]">${c}</span>`).join('')}</div>
+                                </div>`;
+                            }).join('')}
                         </div>
                         ${room.host === state.user.uid ? 
                             `<button onclick="window.startRealGame()" class="pixel-btn bg-green-500 w-full text-white">확인 완료! 게임 시작</button>` : 
@@ -658,16 +663,25 @@ window.forceSubmitClue = () => {
                         ${isClueGiver && !roundData.clue ? `
                             <div class="pixel-border bg-white text-black p-4 w-full">
                                 <h2 class="pixel-font text-xs mb-4 text-center text-red-600 font-bold">당신은 출제자입니다</h2>
-                                <p class="text-[10px] font-bold mb-1">카테고리</p>
-                                <div class="bg-yellow-400 border-2 border-black text-black text-center font-bold py-2 mb-4">${room.topicFlow[roundNum]}</div>
-                                <input id="clueWord" placeholder="제시어 입력" class="pixel-input mb-4 text-base text-center">
-                                <div class="grid grid-cols-4 gap-2 mb-6">
-                                    ${hand.map(cid => { 
-                                        const c = cid==='piggy'?{hex:'#1a1a1a', name:'JOKER', fontColor:'white'}:gameColors.find(x=>x.id===cid); 
-                                        return `<div onclick="window.selCol='${cid}'; document.querySelectorAll('.col').forEach(e=>e.style.border='2px solid black'); this.style.border='4px solid #facc15'; window.playSound('click');" class="col aspect-square border-2 border-black cursor-pointer flex items-center justify-center text-[8px] text-center" style="background-color: ${c.hex}; color: ${c.fontColor}">${cid==='piggy'?'🐷':c.name}</div>` 
-                                    }).join('')}
-                                </div>
-                                <button onclick="window.submitClue(document.getElementById('clueWord').value, window.selCol, '${room.topicFlow[roundNum]}')" class="pixel-btn bg-red-500 w-full text-white">제시어 전송</button>
+                                ${!state.selectedTopic ? `
+                                    <p class="text-[11px] font-bold text-center mb-3">주제를 선택하세요</p>
+                                    <div class="flex flex-col gap-2">
+                                        ${(Array.isArray(room.topicFlow[roundNum]) ? room.topicFlow[roundNum] : [room.topicFlow[roundNum]]).map(t =>
+                                            `<button onclick="window.updateState({selectedTopic:'${t.replace(/'/g,"\\'")}'}); window.playSound('click');" class="pixel-btn bg-gray-100 text-black text-sm py-3 font-bold hover:bg-yellow-100">${t}</button>`
+                                        ).join('')}
+                                    </div>
+                                ` : `
+                                    <p class="text-[10px] font-bold mb-1">선택한 주제</p>
+                                    <div class="bg-black border-2 border-black text-white text-center font-bold py-2 mb-4">${state.selectedTopic}</div>
+                                    <input id="clueWord" placeholder="제시어 입력" class="pixel-input mb-4 text-base text-center">
+                                    <div class="grid grid-cols-4 gap-2 mb-6">
+                                        ${hand.map(cid => {
+                                            const c = cid==='piggy'?{hex:'#1a1a1a', name:'JOKER', fontColor:'white'}:gameColors.find(x=>x.id===cid);
+                                            return `<div onclick="window.selCol='${cid}'; document.querySelectorAll('.col').forEach(e=>e.style.border='2px solid black'); this.style.border='4px solid #facc15'; window.playSound('click');" class="col aspect-square border-2 border-black cursor-pointer flex items-center justify-center text-[8px] text-center" style="background-color: ${c.hex}; color: ${c.fontColor}">${cid==='piggy'?'🐷':c.name}</div>`
+                                        }).join('')}
+                                    </div>
+                                    <button onclick="window.submitClue(document.getElementById('clueWord').value, window.selCol, '${state.selectedTopic.replace(/'/g,"\\'")}')" class="pixel-btn bg-red-500 w-full text-white">제시어 전송</button>
+                                `}
                             </div>
                         ` : `
                             <div class="pixel-border bg-yellow-400 text-black p-6 mb-4 text-center">
@@ -681,7 +695,7 @@ window.forceSubmitClue = () => {
                                         return `<div onclick="!${hasSub} && window.submitCard('${cid}')" class="pixel-card ${hasSub && roundData.submissions?.[state.user.uid] === cid ? 'selected' : ''} ${hasSub ? 'disabled' : ''}" style="background-color: ${c.hex}; color: ${c.fontColor}">${cid==='piggy'?'🐷':''}<span class="text-[8px] mt-1">${c.name}</span></div>` 
                                     }).join('')}
                                 </div>
-                            ` : hasSub ? `<p class="text-center animate-pulse py-10 text-yellow-500">다른 플레이어를 기다리는 중...</p>` : ''}
+                            ` : hasSub ? `<p class="text-center animate-pulse py-10 text-gray-800 font-bold">다른 플레이어를 기다리는 중...</p>` : ''}
                         `}
                     </div>
                 `;
@@ -692,12 +706,16 @@ window.forceSubmitClue = () => {
                         <div class="pixel-border bg-white text-black p-6 w-full max-w-xs relative text-left">
                             <h2 class="pixel-font text-xs mb-4 text-center border-b-2 border-black pb-2">📋 주제 흐름</h2>
                             <div class="space-y-3 max-h-80 overflow-y-auto">
-                                ${Object.entries(room.topicFlow).map(([r, cat]) => `
-                                    <div class="${r == roundNum ? 'bg-yellow-100 ring-2 ring-yellow-400 p-1' : 'opacity-50'}">
-                                        <p class="text-[10px] font-bold">ROUND ${r}</p>
-                                        <p class="text-[11px]">${cat}</p>
-                                    </div>
-                                `).join('')}
+                                ${Object.entries(room.topicFlow).map(([r, cats]) => {
+                                    const rd = room.rounds?.[r] || {};
+                                    const chosen = rd.selectedCategory || '';
+                                    const arr = Array.isArray(cats) ? cats : [cats];
+                                    const isCur = r == roundNum;
+                                    return `<div class="${isCur ? 'ring-2 ring-black bg-gray-100 p-1' : parseInt(r) < roundNum ? 'opacity-40' : ''}">
+                                        <p class="text-[10px] font-bold">ROUND ${r}${chosen ? ` — <span class='text-black'>${chosen}</span>` : ''}</p>
+                                        ${!chosen ? `<div class="flex gap-1 flex-wrap mt-0.5">${arr.map(c=>`<span class="bg-white border border-gray-300 px-1.5 py-0.5 text-[10px]">${c}</span>`).join('')}</div>` : ''}
+                                    </div>`;
+                                }).join('')}
                             </div>
                             <button onclick="window.updateState({showTopicModal: false}); window.playSound('click');" class="pixel-btn bg-black text-white w-full mt-6 py-2 text-xs">닫기</button>
                         </div>
@@ -766,7 +784,7 @@ window.forceSubmitClue = () => {
 
                 container.innerHTML = `
                     <div class="w-full max-w-md">
-                        <h1 class="pixel-font text-xl text-yellow-400 text-center mb-1 animate-bounce">GAME OVER</h1>
+                        <h1 class="pixel-font text-xl text-yellow-400 text-center mb-1 animate-bounce" style="-webkit-text-stroke:1.5px #000;text-shadow:2px 2px 0 #000,-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000;">GAME OVER</h1>
                         <p class="text-center text-lg font-bold mb-4 text-gray-900">${successCount} / ${sortedRounds.length} 라운드 성공</p>
                         <div class="space-y-3 mb-6 max-h-[60vh] overflow-y-auto">${roundsHtml}</div>
                         ${room.host === state.user.uid
