@@ -3,11 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Piggy Yellow 0.3.3 - 8-Bit Coop Game</title>
+    <title>Piggy Yellow 0.34 - 8-Bit Coop Game</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
-   <style>
-        /* 네오둥근모 웹폰트 불러오기 */
+    <style>
         @font-face {
             font-family: 'NeoDunggeunmo';
             src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/noonfonts_2001@1.3/NeoDunggeunmo.woff') format('woff');
@@ -18,96 +17,31 @@
         body {
             background-color: #1a1a1a;
             color: white;
-            /* 기본 폰트를 네오둥근모(고딕 픽셀체)로 변경 */
             font-family: 'NeoDunggeunmo', 'Malgun Gothic', sans-serif;
             user-select: none;
             -webkit-tap-highlight-color: transparent;
         }
         
-        /* 픽셀 폰트 클래스: 영어는 기존 폰트, 한글은 네오둥근모 적용 */
-        .pixel-font { 
-            font-family: 'Press Start 2P', 'NeoDunggeunmo', sans-serif; 
-        }
+        .pixel-font { font-family: 'Press Start 2P', 'NeoDunggeunmo', sans-serif; }
+        .pixel-border { border: 4px solid black; box-shadow: 4px 4px 0px 0px rgba(0,0,0,1); }
+        .pixel-btn { position: relative; padding: 1rem; border-top: 4px solid black; border-left: 4px solid black; box-shadow: 4px 4px 0px 0px rgba(0,0,0,1); transition: all 0.1s; text-transform: uppercase; cursor: pointer; }
+        .pixel-btn:active:not(:disabled) { transform: translate(4px, 4px); box-shadow: 0px 0px 0px 0px rgba(0,0,0,1); }
+        .pixel-btn:disabled { background-color: #4b5563; box-shadow: none; transform: translate(4px, 4px); cursor: not-allowed; }
         
-        .pixel-border {
-            border: 4px solid black;
-            box-shadow: 4px 4px 0px 0px rgba(0,0,0,1);
-        }
+        .pixel-input { width: 100%; padding: 1rem; background-color: white; border: 4px solid black; box-shadow: 4px 4px 0px 0px rgba(0,0,0,1); color: black; outline: none; }
         
-        .pixel-btn {
-            position: relative;
-            padding: 1rem;
-            border-top: 4px solid black;
-            border-left: 4px solid black;
-            box-shadow: 4px 4px 0px 0px rgba(0,0,0,1);
-            transition: all 0.1s;
-            text-transform: uppercase;
-        }
-        
-        .pixel-btn:active:not(:disabled) {
-            transform: translate(4px, 4px);
-            box-shadow: 0px 0px 0px 0px rgba(0,0,0,1);
-        }
-        
-        .pixel-btn:disabled {
-            background-color: #4b5563;
-            box-shadow: none;
-            transform: translate(4px, 4px);
-            cursor: not-allowed;
-        }
-        
-        .pixel-input {
-            width: 100%;
-            padding: 1rem;
-            background-color: white;
-            border: 4px solid black;
-            box-shadow: 4px 4px 0px 0px rgba(0,0,0,1);
-            color: black;
-            outline: none;
-        }
-        
-        .pixel-card {
-            width: 80px;
-            height: 110px;
-            border: 4px solid black;
-            box-shadow: 4px 4px 0px 0px rgba(0,0,0,1);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 0.5rem;
-            cursor: pointer;
-            transition: all 0.1s;
-        }
-        
-        .pixel-card:active:not(.disabled) {
-            transform: translate(4px, 4px);
-            box-shadow: 0px 0px 0px 0px rgba(0,0,0,1);
-        }
-        
-        .pixel-card.selected {
-            border-color: #facc15;
-            transform: scale(1.05);
-            box-shadow: 0px 0px 10px 2px #facc15;
-            z-index: 10;
-        }
-        
-        .pixel-card.disabled {
-            opacity: 0.3;
-            filter: grayscale(1);
-            cursor: not-allowed;
-            transform: none;
-            box-shadow: none;
-        }
-        
-        @keyframes pixel-bounce {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-10px); }
-        }
+        .pixel-card { width: 80px; height: 110px; border: 4px solid black; box-shadow: 4px 4px 0px 0px rgba(0,0,0,1); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.5rem; cursor: pointer; transition: all 0.1s; position: relative; }
+        .pixel-card.selected { border-color: #facc15; transform: scale(1.05); box-shadow: 0px 0px 15px 2px #facc15; z-index: 10; }
+        .pixel-card.disabled { opacity: 0.3; filter: grayscale(1); cursor: not-allowed; }
+
+        @keyframes pixel-bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
         .animate-pixel-bounce { animation: pixel-bounce 1s infinite; }
+        
+        .category-box { cursor: pointer; border: 2px dashed #000; padding: 10px; transition: background 0.2s; }
+        .category-box.active { background: #facc15; border-style: solid; color: black; font-weight: bold; }
     </style>
 </head>
-<body class="overflow-x-hidden">
+<body class="overflow-x-hidden text-sm">
     <div id="app" class="min-h-screen flex flex-col p-4 items-center justify-center">
         <div id="loading" class="pixel-font text-xs animate-pulse">SYSTEM LOADING...</div>
     </div>
@@ -117,7 +51,6 @@
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
         import { getDatabase, ref, set, onValue, update } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
 
-        // --- Firebase Configuration ---
         const firebaseConfig = {
             apiKey: "AIzaSyDroroAeupG2Xik7P42mJ8HPHvGi7JOp0w",
             authDomain: "piggy-yellow-game.firebaseapp.com",
@@ -125,8 +58,6 @@
             storageBucket: "piggy-yellow-game.firebasestorage.app",
             messagingSenderId: "903172799700",
             appId: "1:903172799700:web:f235053288e6f1db710f41",
-            measurementId: "G-5HGPSR9M26",
-            // 아시아 서버 주소 추가됨
             databaseURL: "https://piggy-yellow-game-default-rtdb.asia-southeast1.firebasedatabase.app"
         };
 
@@ -135,92 +66,68 @@
         const db = getDatabase(app);
         const appId = 'piggy-yellow-pixel';
 
-        // --- 8-bit Sound Engine ---
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        const playSound = (type) => {
-            if (audioCtx.state === 'suspended') audioCtx.resume();
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            const now = audioCtx.currentTime;
-
-            switch (type) {
-                case 'click':
-                    osc.type = 'square';
-                    osc.frequency.setValueAtTime(800, now);
-                    osc.frequency.exponentialRampToValueAtTime(100, now + 0.1);
-                    gain.gain.setValueAtTime(0.1, now);
-                    gain.gain.linearRampToValueAtTime(0, now + 0.1);
-                    osc.start(); osc.stop(now + 0.1);
-                    break;
-                case 'success':
-                    osc.type = 'triangle';
-                    // 주파수 배열 복구됨
-                   [440, 554, 659, 880].forEach((f, i) => {
-                        osc.frequency.setValueAtTime(f, now + i * 0.1);
-                    });
-                    gain.gain.setValueAtTime(0.1, now);
-                    gain.gain.linearRampToValueAtTime(0, now + 0.4);
-                    osc.start(); osc.stop(now + 0.4);
-                    break;
-                case 'fail':
-                    osc.type = 'sawtooth';
-                    osc.frequency.setValueAtTime(200, now);
-                    osc.frequency.linearRampToValueAtTime(50, now + 0.5);
-                    gain.gain.setValueAtTime(0.1, now);
-                    gain.gain.linearRampToValueAtTime(0, now + 0.5);
-                    osc.start(); osc.stop(now + 0.5);
-                    break;
-                case 'start':
-                    osc.type = 'square';
-                    osc.frequency.setValueAtTime(400, now);
-                    osc.frequency.exponentialRampToValueAtTime(1200, now + 0.2);
-                    gain.gain.setValueAtTime(0.1, now);
-                    gain.gain.linearRampToValueAtTime(0, now + 0.2);
-                    osc.start(); osc.stop(now + 0.2);
-                    break;
-            }
-        };
-
-        // --- Game Data ---
+        // --- 사진을 반영한 17가지 색상 데이터 ---
         const ALL_COLORS = [
-            { id: 'red', name: 'RED', hex: '#FF0000' },
-            { id: 'blue', name: 'BLUE', hex: '#0000FF' },
-            { id: 'green', name: 'GREEN', hex: '#00FF00' },
-            { id: 'orange', name: 'ORANGE', hex: '#FF8800' },
-            { id: 'purple', name: 'PURPLE', hex: '#AA00FF' },
-            { id: 'pink', name: 'PINK', hex: '#FF00AA' },
-            { id: 'brown', name: 'BROWN', hex: '#884400' },
-            { id: 'black', name: 'BLACK', hex: '#000000' },
-            { id: 'white', name: 'WHITE', hex: '#FFFFFF' },
-            { id: 'gray', name: 'GRAY', hex: '#888888' },
-            { id: 'lime', name: 'LIME', hex: '#CCFF00' },
-            { id: 'cyan', name: 'CYAN', hex: '#00FFFF' },
-            { id: 'indigo', name: 'INDIGO', hex: '#4400FF' },
-            { id: 'emerald', name: 'EMERALD', hex: '#00AA88' },
-            { id: 'rose', name: 'ROSE', hex: '#FF4488' },
-            { id: 'teal', name: 'TEAL', hex: '#008888' },
-            { id: 'amber', name: 'AMBER', hex: '#FFCC00' },
+            { id: 'red', name: '빨강색', hex: '#D32F2F', fontColor: 'white' }, 
+            { id: 'blue_green', name: '청록색', hex: '#00897B', fontColor: 'white' },
+            { id: 'pink', name: '분홍색', hex: '#EC407A', fontColor: 'white' }, 
+            { id: 'brown', name: '갈색', hex: '#795548', fontColor: 'white' },
+            { id: 'black', name: '검은색', hex: '#212121', fontColor: 'white' }, 
+            { id: 'purple', name: '보라색', hex: '#7B1FA2', fontColor: 'white' },
+            { id: 'beige', name: '연미색', hex: '#E6C280', fontColor: 'black' }, 
+            { id: 'green', name: '초록색', hex: '#388E3C', fontColor: 'white' },
+            { id: 'yellow', name: '노란색', hex: '#FBC02D', fontColor: 'black' }, 
+            { id: 'gold', name: '금색', hex: '#D4AF37', fontColor: 'black' },
+            { id: 'yellow_green', name: '연두색', hex: '#AFB42B', fontColor: 'black' }, 
+            { id: 'burgundy', name: '자주색', hex: '#880E4F', fontColor: 'white' },
+            { id: 'sky_blue', name: '연파란색', hex: '#4FC3F7', fontColor: 'black' }, 
+            { id: 'blue', name: '파란색', hex: '#1976D2', fontColor: 'white' },
+            { id: 'orange', name: '주황색', hex: '#F57C00', fontColor: 'white' }, 
+            { id: 'white', name: '흰색', hex: '#F5F5F5', fontColor: 'black' },
+            { id: 'gray', name: '회색', hex: '#757575', fontColor: 'white' }
         ];
 
+        const CATEGORY_POOL = ["과일", "사탕", "여름", "동물", "가전", "운동", "채소", "우주", "직업", "음식", "악기", "날씨", "가구", "탈것", "문구", "옷", "장소", "감정"];
+        
+        // 금지어 목록 (사진에 있는 색상들의 이름, 영어, 한자 포함)
+        const FORBIDDEN = ["빨강", "청록", "분홍", "갈색", "검정", "보라", "연미", "초록", "노랑", "금색", "연두", "자주", "파란", "연파란", "주황", "흰색", "하얀", "회색", "레드", "블루", "그린", "핑크", "브라운", "블랙", "퍼플", "베이지", "옐로", "골드", "버건디", "스카이", "오렌지", "화이트", "그레이", "청", "홍", "황", "백", "흑", "녹", "자", "회"];
+
         // --- State Management ---
-        let state = {
-            user: null,
-            roomCode: '',
-            roomData: null,
-            playerName: '',
-            error: ''
-        };
-        window.state = state; // HTML에서 접근할 수 있도록 밖으로 꺼내줌
+        let state = { user: null, roomCode: '', roomData: null, playerName: '', error: '' };
+        window.state = state;
 
         const updateState = (newState) => {
             state = { ...state, ...newState };
-            window.state = state; // 상태가 변할 때 밖의 상태도 같이 업데이트
+            window.state = state;
             render();
         };
 
-        // --- Game Logic ---
+        const playSound = (type) => {
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            const now = audioCtx.currentTime;
+            
+            // 성공 사운드 (배열 사용)
+            if (type === 'success') { 
+               [440, 554, 659, 880].forEach((f, i) => {
+                    osc.frequency.setValueAtTime(f, now + i * 0.1);
+                }); 
+                gain.gain.setValueAtTime(0.1, now); 
+                gain.gain.linearRampToValueAtTime(0, now + 0.4); 
+                osc.start(); osc.stop(now + 0.4); 
+            }
+            // 클릭 사운드
+            if (type === 'click') { 
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(800, now); 
+                osc.frequency.exponentialRampToValueAtTime(100, now + 0.1); 
+                gain.gain.setValueAtTime(0.1, now); 
+                osc.start(); osc.stop(now + 0.1); 
+            }
+        };
+
         const createRoom = async () => {
             if (!state.playerName) return updateState({ error: '이름을 입력하세요!' });
             playSound('click');
@@ -228,9 +135,7 @@
             const initialData = {
                 host: state.user.uid,
                 status: 'LOBBY',
-                players: { [state.user.uid]: { name: state.playerName, isHost: true } },
-                currentRound: 1,
-                removedCards: [],
+                players: { [state.user.uid]: { name: state.playerName, isHost: true } }
             };
             await set(ref(db, `artifacts/${appId}/rooms/${newCode}`), initialData);
             state.roomCode = newCode;
@@ -241,77 +146,57 @@
             if (!state.playerName || !code) return updateState({ error: '이름과 코드를 입력하세요!' });
             playSound('click');
             const targetCode = code.toUpperCase();
-            const roomRef = ref(db, `artifacts/${appId}/rooms/${targetCode}`);
-            onValue(roomRef, (snapshot) => {
-                if (snapshot.exists()) {
-                    update(ref(db, `artifacts/${appId}/rooms/${targetCode}/players`), {
-                        [state.user.uid]: { name: state.playerName, isHost: false }
-                    });
+            onValue(ref(db, `artifacts/${appId}/rooms/${targetCode}`), (snap) => {
+                if (snap.exists()) {
+                    update(ref(db, `artifacts/${appId}/rooms/${targetCode}/players`), { [state.user.uid]: { name: state.playerName, isHost: false } });
                     state.roomCode = targetCode;
                     startSync(targetCode);
-                } else {
-                    updateState({ error: '방을 찾을 수 없습니다' });
-                }
+                } else updateState({ error: '방을 찾을 수 없습니다' });
             }, { onlyOnce: true });
         };
 
         const startSync = (code) => {
-            let advancePending = false;
-            const roomRef = ref(db, `artifacts/${appId}/rooms/${code}`);
-            onValue(roomRef, (snapshot) => {
+            onValue(ref(db, `artifacts/${appId}/rooms/${code}`), (snapshot) => {
                 const data = snapshot.val();
                 if (!data) return;
-
-                if (data.status === 'PLAYING' && data.host === state.user?.uid && !advancePending) {
-                    const playerIds = Object.keys(data.players || {});
-                    const roundData = data.rounds?.[data.currentRound];
-                    const subCount = Object.keys(roundData?.submissions || {}).length;
-                    
-                    if (roundData?.clue && subCount === playerIds.length - 1) {
-                        advancePending = true;
-                        if (data.currentRound < 6) {
-                            setTimeout(() => {
-                                advancePending = false;
-                                update(ref(db, `artifacts/${appId}/rooms/${code}`), {
-                                    currentRound: data.currentRound + 1
-                                });
-                            }, 1200);
-                        } else {
-                            update(ref(db, `artifacts/${appId}/rooms/${code}`), { status: 'REVEAL' });
-                        }
-                    }
-                }
-
-                if (data.status === 'REVEAL' && state.roomData?.status !== 'REVEAL') {
-                    const rounds = Object.values(data.rounds || {});
-                    const allCorrect = rounds.length === 6 && rounds.every(r => {
-                        const subs = Object.values(r.submissions || {});
-                        return subs.length > 0 && subs.every(v => v === r.answer || v === 'piggy');
-                    });
-                    playSound(allCorrect ? 'success' : 'fail');
-                }
-
                 updateState({ roomData: data });
             });
         };
 
         const startGame = async () => {
-            playSound('start');
+            playSound('click');
             const shuffled = [...ALL_COLORS].sort(() => 0.5 - Math.random());
-            const removed = shuffled.slice(0, 6).map(c => c.id);
+            const selected = shuffled.slice(0, 6).map(c => c.id); // 17장 중 랜덤 6장 선택
             await update(ref(db, `artifacts/${appId}/rooms/${state.roomCode}`), {
                 status: 'PLAYING',
-                removedCards: removed,
-                currentRound: 1,
+                selectedCards: selected, 
+                currentRound: 1
+            });
+            nextRoundInit(1);
+        };
+
+        const nextRoundInit = async (roundNum) => {
+            const cats = [...CATEGORY_POOL].sort(() => 0.5 - Math.random()).slice(0, 3);
+            await update(ref(db, `artifacts/${appId}/rooms/${state.roomCode}/rounds/${roundNum}`), {
+                categoryOptions: cats
             });
         };
 
-        const submitClue = async (word, colorId) => {
-            if (!word || !colorId) return;
+        const submitClue = async (word, colorId, category) => {
+            if (!word || !colorId || !category) return alert('카테고리, 단어, 정답 카드를 모두 선택해주세요!');
+            
+            // 금지어 검사 로직
+            const isForbidden = FORBIDDEN.some(f => word.replace(/\s+/g, '').includes(f));
+            if (isForbidden) {
+                playSound('fail');
+                return alert('⚠️ 색상과 관련된 단어(한글, 영어, 한자)는 사용할 수 없습니다!');
+            }
+            
             playSound('click');
             await update(ref(db, `artifacts/${appId}/rooms/${state.roomCode}/rounds/${state.roomData.currentRound}`), {
                 clue: word,
                 answer: colorId,
+                selectedCategory: category,
                 clueGiver: state.user.uid
             });
         };
@@ -321,6 +206,26 @@
             await update(ref(db, `artifacts/${appId}/rooms/${state.roomCode}/rounds/${state.roomData.currentRound}/submissions`), {
                 [state.user.uid]: colorId
             });
+            checkRoundEnd();
+        };
+
+        const checkRoundEnd = () => {
+            const room = state.roomData;
+            const round = room.rounds[room.currentRound];
+            const playerCount = Object.keys(room.players).length;
+            const subCount = Object.keys(round.submissions || {}).length;
+
+            if (subCount === playerCount - 1) { // 출제자 제외 모두 제출 완료
+                if (room.currentRound < 6) {
+                    setTimeout(async () => {
+                        const next = room.currentRound + 1;
+                        await update(ref(db, `artifacts/${appId}/rooms/${state.roomCode}`), { currentRound: next });
+                        nextRoundInit(next);
+                    }, 2000);
+                } else {
+                    update(ref(db, `artifacts/${appId}/rooms/${state.roomCode}`), { status: 'REVEAL' });
+                }
+            }
         };
 
         const resetGame = () => {
@@ -328,13 +233,9 @@
             window.location.reload();
         };
 
-        // --- Rendering Engine ---
         const render = () => {
             const container = document.getElementById('app');
-            if (!state.user) {
-                container.innerHTML = `<div class="pixel-font text-xs animate-pulse">CONNECTING...</div>`;
-                return;
-            }
+            if (!state.user) return;
 
             if (!state.roomCode) {
                 container.innerHTML = `
@@ -342,19 +243,16 @@
                         <div class="text-center">
                             <div class="text-8xl mb-6 animate-pixel-bounce inline-block">🐷</div>
                             <h1 class="pixel-font text-2xl text-yellow-400 mb-2 leading-tight uppercase">PIGGY<br>YELLOW</h1>
-                            <p class="pixel-font text-[8px] text-gray-500 uppercase tracking-widest">8-bit coop adventure</p>
                         </div>
-                        <div class="w-full space-y-6">
-                            <input id="playerName" value="${state.playerName}" placeholder="이름을 입력하세요" class="pixel-input" oninput="state.playerName = this.value">
-                            <div class="flex flex-col gap-4">
-                                <button onclick="createRoom()" class="pixel-btn bg-yellow-400 pixel-font text-[10px]">방 만들기</button>
-                                <div class="flex gap-2">
-                                    <input id="joinCode" placeholder="코드" class="pixel-input uppercase flex-1">
-                                    <button onclick="joinRoom(document.getElementById('joinCode').value)" class="pixel-btn bg-blue-500 pixel-font text-[10px]">참가</button>
-                                </div>
+                        <input id="playerName" value="${state.playerName}" placeholder="이름 입력" class="pixel-input text-center" oninput="window.state.playerName = this.value">
+                        <div class="flex flex-col gap-4 w-full">
+                            <button onclick="window.createRoom()" class="pixel-btn bg-yellow-400 pixel-font text-[10px]">방 만들기</button>
+                            <div class="flex gap-2">
+                                <input id="joinCode" placeholder="코드" class="pixel-input uppercase flex-1 text-center">
+                                <button onclick="window.joinRoom(document.getElementById('joinCode').value)" class="pixel-btn bg-blue-500 pixel-font text-[10px] text-white">참가</button>
                             </div>
-                            ${state.error ? `<p class="pixel-font text-[8px] text-red-500 text-center uppercase tracking-tighter">${state.error}</p>` : ''}
                         </div>
+                        ${state.error ? `<p class="text-red-500 text-xs">${state.error}</p>` : ''}
                     </div>
                 `;
                 return;
@@ -364,135 +262,123 @@
             if (!room) return;
 
             if (room.status === 'LOBBY') {
-                const playersList = Object.values(room.players || {});
+                const players = Object.values(room.players);
                 container.innerHTML = `
                     <div class="w-full max-w-md pixel-border bg-white text-black p-6">
                         <div class="flex justify-between items-center mb-6">
                             <h2 class="pixel-font text-xs">로비</h2>
-                            <div class="bg-yellow-400 p-2 text-xs pixel-font border-2 border-black">${state.roomCode}</div>
+                            <div class="bg-yellow-400 p-2 border-2 border-black font-bold">${state.roomCode}</div>
                         </div>
                         <div class="space-y-4 mb-8">
-                            ${playersList.map(p => `
-                                <div class="flex items-center gap-3 border-b-2 border-black pb-2">
-                                    <span>🐷</span>
-                                    <span class="pixel-font text-[10px]">${p.name} ${p.isHost ? '[H]' : ''}</span>
-                                </div>
-                            `).join('')}
+                            ${players.map(p => `<div class="border-b-2 border-black pb-2 text-lg">🐷 ${p.name} ${p.isHost ? '<span class="text-xs text-gray-500">[방장]</span>' : ''}</div>`).join('')}
                         </div>
-                        ${room.host === state.user.uid ?
-                            `<button onclick="startGame()" class="pixel-btn bg-green-500 w-full pixel-font text-[10px]" ${playersList.length < 2 ? 'disabled' : ''}>게임 시작</button>` :
-                            `<p class="pixel-font text-[8px] animate-pulse text-center">호스트를 기다리는 중...</p>`
-                        }
+                        ${room.host === state.user.uid ? `<button onclick="window.startGame()" class="pixel-btn bg-green-500 w-full text-white" ${players.length < 2 ? 'disabled' : ''}>게임 시작</button>` : `<p class="animate-pulse text-center">호스트를 기다리는 중...</p>`}
                     </div>
                 `;
             } else if (room.status === 'PLAYING') {
-                const currentRound = room.currentRound;
-                const roundData = room.rounds?.[currentRound] || {};
-                const playersIds = Object.keys(room.players || {});
-                const playerIndex = playersIds.indexOf(state.user.uid);
-                const isClueGiver = (currentRound - 1) % playersIds.length === playerIndex;
+                const roundNum = room.currentRound;
+                const roundData = room.rounds?.[roundNum] || {};
+                const playersIds = Object.keys(room.players);
+                // 출제자를 돌아가면서 배정
+                const isClueGiver = playersIds[(roundNum - 1) % playersIds.length] === state.user.uid;
                 const hasSubmitted = (roundData.submissions && roundData.submissions[state.user.uid]) || (isClueGiver && roundData.answer);
-                const myDeck = ALL_COLORS.filter(c => !room.removedCards.includes(c.id));
-                const usedCards = [];
-
-                if (room.rounds) {
-                    Object.values(room.rounds).forEach(r => {
-                        if (r.submissions && r.submissions[state.user.uid]) usedCards.push(r.submissions[state.user.uid]);
-                        if (r.clueGiver === state.user.uid && r.answer) usedCards.push(r.answer);
-                    });
-                }
+                
+                // 손패 구성: 랜덤 6장 + 피기(조커) 1장 = 총 7장
+                const hand = [...room.selectedCards, 'piggy'];
 
                 let content = `
                     <div class="w-full max-w-md flex flex-col h-full">
-                        <div class="flex justify-between mb-4 px-2">
+                        <div class="flex justify-between mb-4 px-2 items-center">
                             <div class="flex gap-1">
-                                ${[1, 2, 3, 4, 5, 6.].map(n => `<div class="w-4 h-4 border-2 border-black ${n < currentRound ? 'bg-green-500' : n === currentRound ? 'bg-yellow-400' : 'bg-gray-700'}"></div>`).join('')}
+                                ${[1, 2, 3, 4, 5, 6].map(n => `<div class="w-4 h-4 border-2 border-black ${n < roundNum ? 'bg-green-500' : n === roundNum ? 'bg-yellow-400' : 'bg-gray-700'}"></div>`).join('')}
                             </div>
-                            <span class="pixel-font text-[8px]">LV.${currentRound}</span>
+                            <span class="pixel-font text-[10px]">ROUND ${roundNum}</span>
                         </div>
                 `;
 
                 if (isClueGiver && !roundData.clue) {
                     content += `
-                        <div class="pixel-border bg-white text-black p-6 w-full">
-                            <h2 class="pixel-font text-xs mb-4 text-center">당신은 출제자입니다</h2>
-                            <div class="space-y-4">
-                                <input id="clueWord" placeholder="제시어 입력" class="pixel-input">
-                                <div class="grid grid-cols-4 gap-2">
-                                    ${myDeck.filter(c => !usedCards.includes(c.id)).map(c => `
-                                        <div onclick="window.selectedColor = '${c.id}'; document.querySelectorAll('.color-choice').forEach(el=>el.style.border='2px solid black'); this.style.border='4px solid #fbbf24'" class="color-choice aspect-square border-2 border-black cursor-pointer shadow-sm" style="background-color: ${c.hex}"></div>
-                                    `).join('')}
-                                </div>
-                                <button onclick="submitClue(document.getElementById('clueWord').value, window.selectedColor)" class="pixel-btn bg-red-500 w-full pixel-font text-[10px]">제시어 전송</button>
+                        <div class="pixel-border bg-white text-black p-4 w-full">
+                            <h2 class="pixel-font text-xs mb-4 text-center text-red-600">당신은 출제자입니다</h2>
+                            
+                            <p class="text-xs mb-2 font-bold">1. 카테고리 선택 (3개 중 1개)</p>
+                            <div class="grid grid-cols-3 gap-2 mb-4">
+                                ${(roundData.categoryOptions || []).map(cat => `<div onclick="window.selCat='${cat}'; document.querySelectorAll('.cat').forEach(e=>e.classList.remove('active')); this.classList.add('active')" class="cat category-box text-center text-sm">${cat}</div>`).join('')}
                             </div>
+                            
+                            <p class="text-xs mb-2 font-bold">2. 제시어 입력 (색상 이름 금지!)</p>
+                            <input id="clueWord" placeholder="예: 블루베리(X) 과일(O)" class="pixel-input mb-4 text-base">
+                            
+                            <p class="text-xs mb-2 font-bold">3. 정답 카드 선택</p>
+                            <div class="grid grid-cols-4 gap-2 mb-6">
+                                ${hand.map(cid => {
+                                    const isPiggy = cid === 'piggy';
+                                    const c = isPiggy ? {hex:'#1a1a1a', name:'PIGGY', fontColor:'white'} : ALL_COLORS.find(x => x.id === cid);
+                                    return `<div onclick="window.selCol='${cid}'; document.querySelectorAll('.col').forEach(e=>e.style.border='2px solid black'); this.style.border='4px solid #facc15'" class="col aspect-square border-2 border-black cursor-pointer flex items-center justify-center text-[8px] text-center" style="background-color: ${c.hex}; color: ${c.fontColor}">${isPiggy ? '🐷<br>JOKER' : c.name}</div>`
+                                }).join('')}
+                            </div>
+                            
+                            <button onclick="window.submitClue(document.getElementById('clueWord').value, window.selCol, window.selCat)" class="pixel-btn bg-red-500 w-full text-xs text-white">제시어 전송</button>
                         </div>
                     `;
                 } else {
                     content += `
-                        <div class="pixel-border bg-yellow-400 text-black p-6 mb-6 text-center shadow-lg">
-                            <p class="pixel-font text-[8px] mb-2 text-yellow-800 uppercase tracking-tighter font-bold">제시어</p>
-                            <h2 class="pixel-font text-xl uppercase tracking-tighter">${roundData.clue || '기다리는 중...'}</h2>
+                        <div class="pixel-border bg-yellow-400 text-black p-6 mb-6 text-center">
+                            <p class="text-xs mb-2 text-yellow-800 font-bold">[ 카테고리: ${roundData.selectedCategory || '대기 중'} ]</p>
+                            <h2 class="pixel-font text-xl">${roundData.clue || '출제자가 고민 중...'}</h2>
                         </div>
                         ${roundData.clue && !isClueGiver ? `
+                            <p class="text-xs mb-2 text-center text-gray-300">정답이라고 생각되는 카드를 선택하세요!</p>
                             <div class="grid grid-cols-3 gap-4 justify-items-center">
-                                ${myDeck.map(c => `
-                                    <div onclick="!${hasSubmitted || usedCards.includes(c.id)} && submitCard('${c.id}')" 
-                                         class="pixel-card ${hasSubmitted && roundData.submissions?.[state.user.uid] === c.id ? 'selected' : ''} ${hasSubmitted || usedCards.includes(c.id) ? 'disabled' : ''}"
-                                         style="background-color: ${c.hex}">
-                                        <span class="pixel-font text-[6px] font-black ${['white','yellow','lime'].includes(c.id) ? 'text-black' : 'text-white'}">${c.name}</span>
-                                    </div>
-                                `).join('')}
-                                <div onclick="!${hasSubmitted || usedCards.includes('piggy')} && submitCard('piggy')" 
-                                     class="pixel-card bg-yellow-400 ${hasSubmitted && roundData.submissions?.[state.user.uid] === 'piggy' ? 'selected' : ''} ${hasSubmitted || usedCards.includes('piggy') ? 'disabled' : ''}">
-                                    <span class="text-2xl">🐷</span>
-                                    <span class="pixel-font text-[6px] text-black">PIGGY</span>
-                                </div>
+                                ${hand.map(cid => {
+                                    const isPiggy = cid === 'piggy';
+                                    const c = isPiggy ? {hex:'#1a1a1a', name:'PIGGY', fontColor:'white'} : ALL_COLORS.find(x => x.id === cid);
+                                    return `
+                                        <div onclick="!${hasSubmitted} && window.submitCard('${cid}')" 
+                                             class="pixel-card ${hasSubmitted && roundData.submissions?.[state.user.uid] === cid ? 'selected' : ''} ${hasSubmitted ? 'disabled' : ''}"
+                                             style="background-color: ${c.hex}; color: ${c.fontColor}">
+                                            ${isPiggy ? '<span class="text-2xl mb-1">🐷</span>' : ''}
+                                            <span class="pixel-font text-[8px] text-center">${isPiggy ? 'JOKER' : c.name}</span>
+                                        </div>
+                                    `
+                                }).join('')}
                             </div>
-                        ` : hasSubmitted ? `<p class="pixel-font text-[8px] text-center animate-pulse mt-10 uppercase font-bold tracking-widest">SUBMITTED! WAITING...</p>` : ''}
+                        ` : hasSubmitted ? `<p class="text-center animate-pulse mt-10 text-yellow-400">다른 플레이어의 선택을 기다리는 중...</p>` : ''}
                     `;
                 }
-                content += `</div>`;
-                container.innerHTML = content;
+                container.innerHTML = content + `</div>`;
             } else if (room.status === 'REVEAL') {
-                const roundsList = Object.entries(room.rounds || {}).sort(([a],[b]) => Number(a)-Number(b));
-                const allCorrect = roundsList.length === 6 && roundsList.every(([_, d]) => {
-                    const subs = Object.values(d.submissions || {});
-                    return subs.length > 0 && subs.every(v => v === d.answer || v === 'piggy');
-                });
-
+                const rounds = Object.entries(room.rounds || {});
                 container.innerHTML = `
                     <div class="w-full max-w-md mx-auto py-10">
-                        <div class="pixel-border bg-white text-black p-8 mb-8 text-center shadow-xl">
-                            <h1 class="pixel-font text-xl mb-4 uppercase">${allCorrect ? 'VICTORY' : 'DEFEAT'}</h1>
-                            <p class="pixel-font text-[8px] text-gray-400 uppercase tracking-widest">SCORE: ${roundsList.filter(([_, d]) => {
-                                const subs = Object.values(d.submissions || {});
-                                return subs.length > 0 && subs.every(v => v === d.answer || v === 'piggy');
-                            }).length}/6</p>
+                        <div class="pixel-border bg-white text-black p-6 mb-8 text-center">
+                            <h1 class="pixel-font text-2xl mb-2">GAME OVER</h1>
                         </div>
                         <div class="space-y-4 mb-10">
-                            ${roundsList.map(([idx, data]) => {
+                            ${rounds.map(([idx, data]) => {
                                 const subs = Object.values(data.submissions || {});
                                 const isSuccess = subs.every(v => v === data.answer || v === 'piggy');
+                                const answerColor = data.answer === 'piggy' ? '#1a1a1a' : ALL_COLORS.find(c => c.id === data.answer)?.hex;
                                 return `
-                                    <div class="pixel-border p-4 flex justify-between items-center ${isSuccess ? 'bg-green-900 border-green-500' : 'bg-red-900 border-red-500'} transition-colors">
-                                        <div class="flex-1">
-                                            <p class="pixel-font text-[6px] text-gray-300 uppercase tracking-tighter">LV.${idx} ${data.clue}</p>
-                                            <div class="flex gap-2 mt-2 flex-wrap">
-                                                <div class="w-8 h-8 border-2 border-white shadow-sm" style="background-color: ${ALL_COLORS.find(c => c.id === data.answer)?.hex}"></div>
-                                                <span class="pixel-font text-[10px] self-center text-white">▶</span>
-                                                ${subs.map(s => `
-                                                    <div class="w-8 h-8 border-2 border-white flex items-center justify-center text-[8px] shadow-sm" style="background-color: ${s === 'piggy' ? '#FFFF00' : ALL_COLORS.find(c => c.id === s)?.hex}">
-                                                        ${s === 'piggy' ? 'P' : ''}
-                                                    </div>
-                                                `).join('')}
-                                            </div>
+                                    <div class="pixel-border p-4 flex flex-col gap-2 ${isSuccess ? 'bg-green-900 border-green-500' : 'bg-red-900 border-red-500'}">
+                                        <div class="flex justify-between items-center border-b border-gray-600 pb-2">
+                                            <div class="text-xs text-gray-300">LV.${idx} [${data.selectedCategory}] <strong class="text-white text-sm">${data.clue}</strong></div>
+                                            <span class="pixel-font text-lg font-black ml-2">${isSuccess ? 'O' : 'X'}</span>
                                         </div>
-                                        <span class="pixel-font text-lg text-white font-black ml-2">${isSuccess ? 'O' : 'X'}</span>
+                                        <div class="flex gap-2 items-center">
+                                            <span class="text-[10px] text-gray-400">정답:</span>
+                                            <div class="w-6 h-6 border-2 border-white text-[8px] flex items-center justify-center" style="background-color: ${answerColor}">${data.answer === 'piggy' ? '🐷' : ''}</div>
+                                            <span class="text-[10px] text-gray-400 ml-2">선택:</span>
+                                            ${subs.map(s => {
+                                                const sc = s === 'piggy' ? '#1a1a1a' : ALL_COLORS.find(c => c.id === s)?.hex;
+                                                return `<div class="w-6 h-6 border-2 border-white text-[8px] flex items-center justify-center" style="background-color: ${sc}">${s === 'piggy' ? '🐷' : ''}</div>`
+                                            }).join('')}
+                                        </div>
                                     </div>
                                 `;
                             }).join('')}
                         </div>
-                        <button onclick="resetGame()" class="pixel-btn bg-yellow-400 w-full pixel-font text-[10px]">Play Again</button>
+                        <button onclick="window.resetGame()" class="pixel-btn bg-yellow-400 w-full pixel-font text-xs text-black">처음으로 돌아가기</button>
                     </div>
                 `;
             }
@@ -505,24 +391,8 @@
         window.submitCard = submitCard;
         window.resetGame = resetGame;
 
-// 로그인 시도 후 에러가 나면 화면에 빨간 글씨로 띄워줍니다.
-signInAnonymously(auth).catch((error) => {
-    const container = document.getElementById('app');
-    container.innerHTML = `
-        <div class="pixel-font text-[10px] text-red-500 text-center uppercase leading-loose">
-            AUTH ERROR!<br>${error.message}<br>
-            <span class="text-white text-[8px]">Firebase 콘솔에서 Authentication > 익명 로그인을 켜주세요.</span>
-        </div>
-    `;
-    console.error("Auth Error:", error);
-});
-
-onAuthStateChanged(auth, (u) => {
-    if (u) {
-        state.user = u;
-        render();
-    }
-});
+        signInAnonymously(auth).catch((err) => console.error(err));
+        onAuthStateChanged(auth, (u) => { if (u) { state.user = u; render(); } });
     </script>
 </body>
 </html>
