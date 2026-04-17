@@ -288,12 +288,28 @@ const ALL_COLORS = [
                     });
                 }
 
+                // 1인만 남으면 즉시 종료
+                if (data.status === 'PLAYING' && data.host === state.user?.uid && Object.keys(data.players || {}).length <= 1 && !advancePending) {
+                    advancePending = true;
+                    update(ref(db, `artifacts/${appId}/rooms/${code}`), { status: 'REVEAL' });
+                }
+                // 출제자가 나가고 아직 제시어 없으면 라운드 스킵
+                if (data.status === 'PLAYING' && data.host === state.user?.uid && !advancePending) {
+                    const rNum = data.currentRound;
+                    const rData = data.rounds?.[rNum] || {};
+                    const pIds = Object.keys(data.players || {});
+                    const expectedGiver = pIds[(rNum - 1) % pIds.length];
+                    if (!rData.clue && rData.clueGiver && !data.players[rData.clueGiver] && expectedGiver && !advancePending) {
+                        advancePending = true;
+                        setTimeout(() => { advancePending = false; update(ref(db, `artifacts/${appId}/rooms/${code}`), rNum < 6 ? { currentRound: rNum + 1 } : { status: 'REVEAL' }); }, 500);
+                    }
+                }
                 // Host advances round when all guessers have submitted
                 if (data.status === 'PLAYING' && data.host === state.user?.uid && !advancePending) {
                     const playerIds = Object.keys(data.players || {});
                     const roundNum = data.currentRound;
                     const roundData = data.rounds?.[roundNum] || {};
-                    const subCount = Object.keys(roundData.submissions || {}).length;
+                    const subCount = Object.keys(roundData.submissions || {}).filter(id => data.players[id]).length;
                     if (roundData.clue && subCount >= playerIds.length - 1) {
                         advancePending = true;
                         setTimeout(() => {
@@ -410,7 +426,9 @@ const ALL_COLORS = [
         };
 
 const submitClue = async (word, colorId, category) => {
-    if (!word || !colorId || !category) return alert('모두 선택해주세요!');
+    if (!word) return alert('제시어를 적어주세요');
+    if (!colorId) return alert('색깔을 선택해주세요');
+    if (!category) return alert('주제를 선택해주세요');
     
     // 어떤 금지어에 걸렸는지 모두 찾아냅니다.
     const found = FORBIDDEN.filter(f => word.replace(/\s+/g, '').includes(f));
@@ -815,7 +833,11 @@ window.forceSubmitClue = () => {
                 }
             } else if (room.status === 'REVEAL') {
                 const sortedRounds = Object.entries(room.rounds || {}).sort(([a],[b]) => Number(a)-Number(b));
-                const playerIds = Object.keys(room.players);
+                const playerIds = Object.keys(room.players).sort((a, b) => {
+                    if (a === room.host) return -1;
+                    if (b === room.host) return 1;
+                    return (room.players[a].name || "").localeCompare(room.players[b].name || "", "ko");
+                });
                 const successCount = sortedRounds.filter(([,rd]) =>
                     Object.values(rd.submissions||{}).every(v => v===rd.answer||v==='piggy')
                 ).length;
@@ -853,7 +875,7 @@ window.forceSubmitClue = () => {
 
                 container.innerHTML = `
                     <div class="w-full max-w-md">
-                        <h1 class="pixel-font text-xl text-yellow-400 text-center mb-1 animate-bounce" style="-webkit-text-stroke:1.5px #000;text-shadow:2px 2px 0 #000,-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000;">GAME OVER</h1>
+                        <h1 class="pixel-font text-xl text-center mb-1 animate-bounce" style="color:${successCount===sortedRounds.length&&sortedRounds.length>0?'#4ade80':'#facc15'};-webkit-text-stroke:1.5px #000;text-shadow:2px 2px 0 #000,-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000;">${successCount===sortedRounds.length&&sortedRounds.length>0?'SUCCESS!':'GAME OVER'}</h1>
                         <p class="text-center text-lg font-bold mb-4 text-gray-900">${successCount} / ${sortedRounds.length} 라운드 성공</p>
                         <div class="space-y-3 mb-6 max-h-[60vh] overflow-y-auto">${roundsHtml}</div>
                         ${room.host === state.user.uid
@@ -890,17 +912,34 @@ window.forceSubmitClue = () => {
             update(ref(db, `artifacts/${appId}/rooms/${state.roomCode}`), { draftCards: cards });
         };
         window.leaveRoom = () => {
-            clearSession();
-            stopBGM();
+            const roomCode = state.roomCode;
+            const uid = state.user?.uid;
+            const room = state.roomData;
+            if (roomCode && uid && room && room.status !== 'LOBBY' && room.status !== 'REVEAL') {
+                const remaining = Object.keys(room.players || {}).filter(id => id !== uid);
+                const fbUpdates = { [`players/${uid}`]: null };
+                if (room.host === uid && remaining.length > 0) {
+                    fbUpdates.host = remaining[0];
+                    fbUpdates[`players/${remaining[0]}/isHost`] = true;
+                }
+                if (remaining.length <= 1) fbUpdates.status = 'REVEAL';
+                update(ref(db, `artifacts/${appId}/rooms/${roomCode}`), fbUpdates);
+            } else if (roomCode && uid && room && room.status === 'LOBBY') {
+                update(ref(db, `artifacts/${appId}/rooms/${roomCode}/players`), { [uid]: null });
+            }
+            clearSession(); stopBGM();
             updateState({ roomCode: '', roomData: null, tempSelectedCards: [], selectedTopic: '', showTopicModal: false, clueWarning: { show: false } });
         };
         window.forceEndGame = async () => {
             const isHost = state.roomData?.host === state.user.uid;
             if (isHost) {
-                if (!confirm("전체 게임을 강제 종료하시겠습니까?")) return;
-                await update(ref(db, `artifacts/${appId}/rooms/${state.roomCode}`), { status: "REVEAL" });
+                if (!confirm('게임을 종료하고 홈으로 가시겠습니까?')) return;
+                const code = state.roomCode;
+                await update(ref(db, `artifacts/${appId}/rooms/${code}`), { status: 'REVEAL' });
+                clearSession(); stopBGM();
+                updateState({ roomCode: '', roomData: null, tempSelectedCards: [], selectedTopic: '', showTopicModal: false, clueWarning: { show: false } });
             } else {
-                if (!confirm("게임에서 나가시겠습니까?")) return;
+                if (!confirm('게임에서 나가시겠습니까?')) return;
                 window.leaveRoom();
             }
         };
